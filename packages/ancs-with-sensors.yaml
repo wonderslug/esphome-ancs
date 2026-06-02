@@ -1,7 +1,7 @@
 # ESPHome ANCS Component — package with sensors
 #
-# Includes the component AND pre-wires the binary_sensor and text_sensor
-# platforms. Requires your config to define:
+# Includes the component AND pre-wires the binary_sensor, text_sensor, and
+# button platforms. Requires your config to define:
 #   - id: my_ancs       on the ancs: block
 #   - api: or mqtt:     to surface sensors in Home Assistant
 #
@@ -34,6 +34,8 @@ binary_sensor:
 text_sensor:
   - platform: ancs
     ancs_id: my_ancs
+    connected_device:
+      name: "${friendly_name} Connected iPhone"
     last_title:
       name: "${friendly_name} Last Notification"
     last_message:
@@ -42,3 +44,20 @@ text_sensor:
       name: "${friendly_name} Last Caller"
     last_app_id:
       name: "${friendly_name} Last App"
+
+button:
+  # Forget all paired phones and restart advertising so a new phone can pair.
+  - platform: template
+    name: "${friendly_name} Clear Bonds"
+    icon: "mdi:link-off"
+    entity_category: config
+    on_press:
+      - ancs.clear_bonds: my_ancs
+
+  # Drop the current BLE link; the phone will typically reconnect on its own.
+  - platform: template
+    name: "${friendly_name} Disconnect iPhone"
+    icon: "mdi:bluetooth-off"
+    entity_category: config
+    on_press:
+      - ancs.disconnect: my_ancs
