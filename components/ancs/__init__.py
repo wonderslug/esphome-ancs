@@ -203,6 +203,7 @@ async def disconnect_to_code(config, action_id, template_arg, args):
             cv.Required("uid"): cv.templatable(cv.uint32_t),
         }
     ),
+    synchronous=True,
 )
 async def request_attributes_to_code(config, action_id, template_arg, args):
     parent = await cg.get_variable(config[CONF_ID])
