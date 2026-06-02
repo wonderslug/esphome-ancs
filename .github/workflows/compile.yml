@@ -24,7 +24,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.platformio
-          key: pio-${{ runner.os }}-esphome-2026.5.1
+          key: pio-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
 
       # Compiled object files for the component and generated sources.
       # Keyed to the component source + test YAML so any code change triggers
@@ -37,7 +37,7 @@ jobs:
           restore-keys: esphome-build-${{ runner.os }}-
 
       - name: Install ESPHome
-        run: pip install esphome==2026.5.1
+        run: pip install -r requirements.txt
 
       # Fast schema + codegen validation — catches Python errors in __init__.py
       # before spending time on a full compile.
