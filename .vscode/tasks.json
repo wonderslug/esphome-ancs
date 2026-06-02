@@ -110,6 +110,66 @@
       "problemMatcher": []
     },
 
+    // ─── Lint (check) ───────────────────────────────────────────────────────
+
+    {
+      "label": "Lint: Check all",
+      "detail": "Run clang-format, ruff, and yamllint checks (mirrors CI). Does not modify files.",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-c",
+        "echo '--- clang-format ---' && find components/ancs test -name '*.h' -o -name '*.cpp' | grep -v doctest | xargs clang-format --dry-run --Werror && echo 'OK' && echo '--- ruff check ---' && ruff check components/ && echo 'OK' && echo '--- ruff format ---' && ruff format --check components/ && echo 'OK' && echo '--- yamllint ---' && yamllint -c .yamllint.yml .github/workflows/ && echo 'OK' && echo '' && echo 'All lint checks passed.'"
+      ],
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "shared", "focus": true },
+      "problemMatcher": ["$gcc"]
+    },
+
+    // ─── Lint (fix) ─────────────────────────────────────────────────────────
+
+    {
+      "label": "Lint: Fix C++ formatting",
+      "detail": "Apply clang-format in-place to all component and test C++ files.",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-c",
+        "find components/ancs test -name '*.h' -o -name '*.cpp' | grep -v doctest | xargs clang-format -i && echo 'C++ formatting applied.'"
+      ],
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "shared", "focus": true },
+      "problemMatcher": []
+    },
+
+    {
+      "label": "Lint: Fix Python (ruff)",
+      "detail": "Apply ruff --fix (imports + style) and ruff format in-place to all codegen Python files.",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-c",
+        "ruff check --fix components/ && ruff format components/ && echo 'Python formatting applied.'"
+      ],
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "shared", "focus": true },
+      "problemMatcher": []
+    },
+
+    {
+      "label": "Lint: Fix all",
+      "detail": "Apply all auto-fixable linting corrections (clang-format + ruff). Run 'Lint: Check all' after to confirm.",
+      "type": "shell",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "Lint: Fix C++ formatting",
+        "Lint: Fix Python (ruff)"
+      ],
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "shared", "focus": true },
+      "problemMatcher": []
+    },
+
     // ─── Combined ───────────────────────────────────────────────────────────
 
     {
