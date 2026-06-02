@@ -1,4 +1,4 @@
-## 📵 Grandma's not answering her phone. She left it on silent again.
+## 📵 Grandma's not answering her phone. Its on silent mode again.
 
 **And it's an iPhone**, so what can I do?
 
