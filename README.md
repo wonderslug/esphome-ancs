@@ -1,6 +1,43 @@
+## 📵 Grandma's not answering her phone. She left it on silent again.
+
+**And it's an iPhone**, so what can I do?
+
+As it happens, Apple already thought of this. There's a tidy little Bluetooth service with a delightfully official name — **ANCS**, the Apple Notification Center Service — and it's the same plumbing your AirPods and Apple Watch use to know your phone is ringing. Apple published the spec, documented it, and left the door open for anyone polite enough to knock.
+
+So we knocked. This ESPHome component teaches a $5 ESP32 to speak fluent ANCS, and a bonded iPhone happily hands over its notifications for your hardware to do something fun with. Incoming call? **Flash every lamp in the house like a tiny disco.** iMessage from the kids? **Bong a bell in the workshop.** Calendar reminder, app ping, phone buried in a coat pocket on silent at the bottom of a tote bag — turn any of it into something you can actually *see, hear, or automate* in Home Assistant.
+
+No cloud. No subscription. No app to install. Just an ESP32, an iPhone, and the notifications your phone was already broadcasting over Bluetooth — finally put to work.
+
+Grandma still won't answer. But now *the whole house knows.*
+
+---
+
 # ESPHome ANCS Component
 
-An ESPHome external component that turns an ESP32 into an Apple Notification Center Service (ANCS) consumer. When a bonded iPhone receives a notification — an incoming call, iMessage, app alert, and so on — the ANCS events drive ESPHome automations and sensor entities directly on the device. The component runs on the native NimBLE stack over ESP-IDF; because the ESP32's Bluetooth radio is dedicated to ANCS, it cannot coexist with Bluedroid-based features such as `bluetooth_proxy`, `esp32_ble_tracker`, or `ble_client`.
+[![ESPHome Compile](https://github.com/wonderslug/esphome-ancs/actions/workflows/compile.yml/badge.svg)](https://github.com/wonderslug/esphome-ancs/actions/workflows/compile.yml)
+[![Host Unit Tests](https://github.com/wonderslug/esphome-ancs/actions/workflows/test.yml/badge.svg)](https://github.com/wonderslug/esphome-ancs/actions/workflows/test.yml)
+[![Lint](https://github.com/wonderslug/esphome-ancs/actions/workflows/lint.yml/badge.svg)](https://github.com/wonderslug/esphome-ancs/actions/workflows/lint.yml)
+[![ESPHome](https://img.shields.io/badge/dynamic/regex?url=https%3A%2F%2Fraw.githubusercontent.com%2Fwonderslug%2Fesphome-ancs%2Fmaster%2Frequirements.txt&search=esphome%3D%3D%28.%2A%29&replace=%241&label=ESPHome&logo=esphome&logoColor=white&color=000000)](requirements.txt)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+This is an ESPHome external component that turns an ESP32 into an Apple Notification Center Service (ANCS) consumer. When a bonded iPhone receives a notification — an incoming call, iMessage, app alert, and so on — the ANCS events drive ESPHome automations and sensor entities directly on the device. The component runs on the native NimBLE stack over ESP-IDF; because the ESP32's Bluetooth radio is dedicated to ANCS, it cannot coexist with Bluedroid-based features such as `bluetooth_proxy`, `esp32_ble_tracker`, or `ble_client`.
+
+---
+
+## Documentation
+
+| Document | What's inside |
+|---|---|
+| [Documentation index](docs/README.md) | Hub linking every doc, example YAML, and category reference |
+| [Pairing guide](docs/pairing.md) | **Why nRF Connect is required**, step-by-step pairing, bond-mismatch recovery, auto-reconnect, troubleshooting |
+| [Architecture](docs/architecture.md) | Three-layer design, threading model, BLE lifecycle, key design decisions |
+| [Category reference](docs/categories/README.md) | All ANCS notification categories, trigger variables, event flags, common patterns |
+
+**Example configurations** (ready to flash on a WEMOS D1 Mini ESP32):
+
+- [Blink on incoming call](examples/d1-mini-blink-on-call.yaml)
+- [Blink on iMessage](examples/d1-mini-blink-on-imessage.yaml)
+- [Call + missed-call / voicemail alerts](examples/d1-mini-call-and-missed-alerts.yaml)
 
 ---
 
@@ -11,9 +48,64 @@ An ESPHome external component that turns an ESP32 into an Apple Notification Cen
 - **Mobile**: an iPhone running iOS 7 or later (ANCS is an Apple protocol)
 - **[nRF Connect for Mobile](https://www.nordicsemi.com/Products/Development-tools/nRF-Connect-for-mobile)** — required on iOS to complete the initial pairing (see below)
 
+
+## Installation
+
+### Via ESPHome packages (recommended)
+
+The simplest way to use the component in any project. Add one line to your YAML — ESPHome fetches the component automatically at compile time.
+
+**Minimal (component code only — you configure everything):**
+
+```yaml
+packages:
+  ancs_component: github://wonderslug/esphome-ancs/packages/ancs.yaml@master
+```
+
+**With sensors pre-wired (binary + text sensors appear in Home Assistant automatically):**
+
+```yaml
+substitutions:
+  friendly_name: "Living Room"
+
+packages:
+  ancs_component: github://wonderslug/esphome-ancs/packages/ancs-with-sensors.yaml@master
+```
+
+The `ancs-with-sensors` package uses `${friendly_name}` for sensor names — define it as a substitution and all sensors are prefixed automatically.
+
+**Pin to a release tag for production (recommended once the repo has releases):**
+
+```yaml
+packages:
+  ancs_component: github://wonderslug/esphome-ancs/packages/ancs.yaml@v1.0.0
+```
+
 ---
 
-## ⚠️ Pairing requires nRF Connect — not Settings → Bluetooth
+### Local (development / monorepo)
+
+```yaml
+external_components:
+  - source:
+      type: local
+      path: ../components   # adjust to your relative path
+```
+
+### Direct git reference
+
+```yaml
+external_components:
+  - source:
+      type: git
+      url: https://github.com/wonderslug/esphome-ancs
+      ref: master
+    components: [ancs]
+```
+---
+
+## Pairing
+### ⚠️ Pairing requires nRF Connect — not Settings → Bluetooth
 
 > **This is the single most important thing to know before you flash.**
 
@@ -70,62 +162,6 @@ action (e.g. from Home Assistant or a button), then re-pair from step 3 above.
 > The author reserves the right to respond to such reports with nothing but a link back to this paragraph, a slow clap, and the quiet dignity of someone who already explained it **twice**. The device is fine. iOS just doesn't list DIY BLE gadgets there. **Use nRF Connect.** It's free. It works. It's described above in numbered steps with links and everything.  There is even a [whole doc](docs/pairing.md) just for this that goes into a lot of detail.
 >
 > We believe in you. You can do this. 🫵
-
----
-
-## Installation
-
-### Via ESPHome packages (recommended)
-
-The simplest way to use the component in any project. Add one line to your YAML — ESPHome fetches the component automatically at compile time.
-
-**Minimal (component code only — you configure everything):**
-
-```yaml
-packages:
-  ancs_component: github://wonderslug/esphome-ancs/packages/ancs.yaml@master
-```
-
-**With sensors pre-wired (binary + text sensors appear in Home Assistant automatically):**
-
-```yaml
-substitutions:
-  friendly_name: "Living Room"
-
-packages:
-  ancs_component: github://wonderslug/esphome-ancs/packages/ancs-with-sensors.yaml@master
-```
-
-The `ancs-with-sensors` package uses `${friendly_name}` for sensor names — define it as a substitution and all sensors are prefixed automatically.
-
-**Pin to a release tag for production (recommended once the repo has releases):**
-
-```yaml
-packages:
-  ancs_component: github://wonderslug/esphome-ancs/packages/ancs.yaml@v1.0.0
-```
-
----
-
-### Local (development / monorepo)
-
-```yaml
-external_components:
-  - source:
-      type: local
-      path: ../components   # adjust to your relative path
-```
-
-### Direct git reference
-
-```yaml
-external_components:
-  - source:
-      type: git
-      url: https://github.com/wonderslug/esphome-ancs
-      ref: master
-    components: [ancs]
-```
 
 ---
 
@@ -313,20 +349,6 @@ esphome compile tests/test-ancs.yaml
 
 ---
 
-## On-Device Verification Checklist
-
-The following steps require a real iPhone; they cannot be tested in a simulator.
-
-1. Flash and boot the ESP32. Watch serial output for `NimBLE synced` and `advertising started`.
-2. Open **nRF Connect** on your iPhone → **SCANNER** → **SCAN** → tap your device name → **CONNECT**.
-3. Tap **Pair** in the iOS system dialog that appears. *(Settings → Bluetooth does not work on modern iOS — see the Pairing section above.)*
-4. The "iPhone Connected" binary sensor turns ON; logs show `ANCS chars done` and `iPhone connected`.
-5. Call the iPhone from another number → the Alert Light flashes; "Call Active" turns ON; "Last Caller" populates with the caller name.
-6. End the call → the light turns off; "Call Active" turns OFF.
-7. Toggle iPhone Airplane mode off and back on → the node auto-reconnects with no re-pairing required.
-8. To re-pair after iOS "Forget This Device": forget the device on iOS, then open nRF Connect and connect again — the pairing dialog reappears automatically.
-
----
 
 ## Known Limitations
 
@@ -334,22 +356,6 @@ The following steps require a real iPhone; they cannot be tested in a simulator.
 - **One active connection**: only one iPhone can be connected at a time. Up to `max_bonds` paired iPhones are stored so a known device auto-reconnects when in range.
 - **Resolvable private addresses**: iOS uses rotating Bluetooth MAC addresses. The component identifies paired iPhones via the bonded IRK (identity resolving key) stored in NVS, not by MAC address.
 - **No Bluedroid coexistence**: because the component takes ownership of the BLE radio via NimBLE/ESP-IDF, it cannot run alongside `bluetooth_proxy`, `esp32_ble_tracker`, or `ble_client`.
-
----
-
-## Testing
-
-Host-side unit tests for the pure protocol layer (no hardware required):
-
-```bash
-cd test && make test
-```
-
-The demo configuration must compile cleanly:
-
-```bash
-esphome compile tests/test-ancs.yaml
-```
 
 ---
 
