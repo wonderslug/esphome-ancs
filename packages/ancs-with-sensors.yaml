@@ -1,0 +1,44 @@
+# ESPHome ANCS Component — package with sensors
+#
+# Includes the component AND pre-wires the binary_sensor and text_sensor
+# platforms. Requires your config to define:
+#   - id: my_ancs       on the ancs: block
+#   - api: or mqtt:     to surface sensors in Home Assistant
+#
+# Usage:
+#   packages:
+#     ancs_component: github://wonderslug/esphome-ancs/packages/ancs-with-sensors.yaml@master
+#
+# Then add your ancs: block:
+#   ancs:
+#     id: my_ancs
+#     name: "My ANCS"
+#     on_notification_added:
+#       ...
+
+external_components:
+  - source:
+      type: git
+      url: https://github.com/wonderslug/esphome-ancs
+      ref: master
+    components: [ancs]
+
+binary_sensor:
+  - platform: ancs
+    ancs_id: my_ancs
+    connected:
+      name: "${friendly_name} iPhone Connected"
+    call_active:
+      name: "${friendly_name} Call Active"
+
+text_sensor:
+  - platform: ancs
+    ancs_id: my_ancs
+    last_title:
+      name: "${friendly_name} Last Notification"
+    last_message:
+      name: "${friendly_name} Last Message"
+    last_caller:
+      name: "${friendly_name} Last Caller"
+    last_app_id:
+      name: "${friendly_name} Last App"

@@ -1,0 +1,11 @@
+test/build/
+.esphome/
+__pycache__/
+*.pyc
+
+# local agent + esphome config-dir artifacts
+.claude/
+tests/.gitignore
+
+# Superpowers planning docs (local only — not part of the published component)
+docs/superpowers/

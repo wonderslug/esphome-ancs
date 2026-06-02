@@ -1,0 +1,10 @@
+{
+  "recommendations": [
+    // ESPHome YAML syntax highlighting + config validation
+    "esphome.esphome-vscode",
+    // C/C++ IntelliSense — helps navigate the component source and NimBLE headers
+    "ms-vscode.cpptools",
+    // Better YAML support (schema validation, auto-complete)
+    "redhat.vscode-yaml"
+  ]
+}

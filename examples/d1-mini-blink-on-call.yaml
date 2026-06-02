@@ -1,0 +1,78 @@
+esphome:
+  name: ancs-call-blinker
+
+esp32:
+  board: wemos_d1_mini32
+  framework:
+    type: esp-idf
+
+logger:
+
+external_components:
+  - source:
+      type: local
+      path: ../components
+
+# ─── ANCS ────────────────────────────────────────────────────────────────────
+ancs:
+  id: my_ancs
+  name: "Call Blinker"         # shown in iOS Settings → Bluetooth when pairing
+  auto_fetch_attributes: true
+  fetch_attributes: [title]    # caller name only — we don't need app_id/message
+
+  on_notification_added:
+    - if:
+        condition:
+          lambda: 'return category == "incoming_call";'
+        then:
+          - script.execute: blink_ringing
+
+  on_notification_removed:
+    - if:
+        condition:
+          lambda: 'return category == "incoming_call";'
+        then:
+          - script.stop: blink_ringing
+          - light.turn_off: onboard_led
+
+  # Optional: log the caller's name when it arrives
+  on_notification_attributes:
+    - if:
+        condition:
+          lambda: 'return category == "incoming_call";'
+        then:
+          - logger.log:
+              format: "Incoming call from: %s"
+              args: [title.c_str()]
+
+# ─── LED (GPIO2 = onboard LED, active-high on D1 Mini ESP32) ─────────────────
+output:
+  - platform: gpio
+    pin: GPIO2
+    id: led_gpio
+
+light:
+  - platform: binary
+    id: onboard_led
+    output: led_gpio
+    restore_mode: ALWAYS_OFF
+
+# ─── Blink script ─────────────────────────────────────────────────────────────
+# 3 fast blinks (100 ms on / 100 ms off), then a 500 ms pause, repeating.
+# Mirrors bluebell's ALERT_INCOMING pattern.
+script:
+  - id: blink_ringing
+    mode: restart          # restart if somehow called again while already running
+    then:
+      - while:
+          condition:
+            lambda: 'return true;'
+          then:
+            - repeat:
+                count: 3
+                then:
+                  - light.turn_on: onboard_led
+                  - delay: 100ms
+                  - light.turn_off: onboard_led
+                  - delay: 100ms
+            - delay: 500ms

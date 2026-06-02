@@ -1,0 +1,19 @@
+name: Host Unit Tests
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  test:
+    name: Protocol layer unit tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build and run tests
+        # Override CXX to g++ — guaranteed present on all ubuntu runners.
+        # The Makefile defaults to clang++, both are valid.
+        run: make -C test test CXX=g++

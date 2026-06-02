@@ -1,0 +1,90 @@
+esphome:
+  name: ancs-test
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+logger:
+
+external_components:
+  - source:
+      type: local
+      path: ../components
+
+ancs:
+  id: my_ancs
+  name: "ESPHome-ANCS"
+  auto_fetch_attributes: true
+  fetch_attributes: [app_id, title, message]
+  max_bonds: 3
+  on_notification_added:
+    - logger.log:
+        format: "ADDED uid=%u cat=%s count=%u"
+        args: [uid, category.c_str(), category_count]
+    - if:
+        condition:
+          lambda: 'return category == "incoming_call";'
+        then:
+          - light.turn_on:
+              id: alert_light
+              flash_length: 60s
+  on_notification_attributes:
+    - logger.log:
+        format: "ATTRS uid=%u title=%s msg=%s"
+        args: [uid, title.c_str(), message.c_str()]
+  on_notification_removed:
+    - logger.log:
+        format: "REMOVED uid=%u cat=%s"
+        args: [uid, category.c_str()]
+    - if:
+        condition:
+          lambda: 'return category == "incoming_call";'
+        then:
+          - light.turn_off: alert_light
+  on_connect:
+    - logger.log: "iPhone connected"
+  on_disconnect:
+    - logger.log: "iPhone disconnected"
+
+output:
+  - platform: gpio
+    pin: GPIO2
+    id: led_output
+
+light:
+  - platform: binary
+    name: "Alert Light"
+    output: led_output
+    id: alert_light
+
+binary_sensor:
+  - platform: ancs
+    ancs_id: my_ancs
+    connected:
+      name: "iPhone Connected"
+    call_active:
+      name: "Call Active"
+
+text_sensor:
+  - platform: ancs
+    ancs_id: my_ancs
+    connected_device:
+      name: "Connected iPhone"
+    last_title:
+      name: "Last Notification"
+    last_message:
+      name: "Last Message"
+    last_caller:
+      name: "Last Caller"
+
+interval:
+  - interval: 3600s
+    then:
+      - ancs.clear_bonds: my_ancs
+  - interval: 7200s
+    then:
+      - ancs.request_attributes:
+          id: my_ancs
+          uid: 0

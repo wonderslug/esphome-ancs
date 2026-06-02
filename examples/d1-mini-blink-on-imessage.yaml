@@ -1,0 +1,77 @@
+esphome:
+  name: ancs-message-blinker
+
+esp32:
+  board: wemos_d1_mini32
+  framework:
+    type: esp-idf
+
+logger:
+
+external_components:
+  - source:
+      type: local
+      path: ../components
+
+# ─── ANCS ────────────────────────────────────────────────────────────────────
+ancs:
+  id: my_ancs
+  name: "Msg Blinker"          # shown in iOS Bluetooth when pairing via nRF Connect
+  auto_fetch_attributes: true
+  # app_id is required to identify the source app.
+  # title  = sender's contact name (or phone number if not in contacts)
+  # message = preview text — empty if iOS "Show Previews" is off
+  fetch_attributes: [app_id, title, message]
+
+  # on_notification_attributes fires ~1 s after the notification appears,
+  # once the GATT attribute fetch from the iPhone completes.
+  # Use this (not on_notification_added) when you need app_id to filter.
+  on_notification_attributes:
+    - if:
+        condition:
+          # iMessage and SMS both come through com.apple.MobileSMS.
+          # Other app IDs you can match here:
+          #   net.whatsapp.WhatsApp   — WhatsApp
+          #   ph.telegra.Telegraph    — Telegram
+          #   org.whispersystems.signal — Signal
+          #   com.facebook.Messenger  — Messenger
+          lambda: 'return app_id == "com.apple.MobileSMS";'
+        then:
+          - logger.log:
+              format: "iMessage from: %s — %s"
+              args: [title.c_str(), message.c_str()]
+          - script.execute: blink_message
+
+  on_connect:
+    - logger.log: "iPhone connected"
+  on_disconnect:
+    - logger.log: "iPhone disconnected"
+    - script.stop: blink_message
+    - light.turn_off: onboard_led
+
+# ─── LED (GPIO2 = onboard LED, active-high on D1 Mini ESP32) ─────────────────
+output:
+  - platform: gpio
+    pin: GPIO2
+    id: led_gpio
+
+light:
+  - platform: binary
+    id: onboard_led
+    output: led_gpio
+    restore_mode: ALWAYS_OFF
+
+# ─── Blink script ─────────────────────────────────────────────────────────────
+# 5 slow blinks (300 ms on / 300 ms off) — calm and noticeable.
+# mode: restart means a second message while blinking restarts the count.
+script:
+  - id: blink_message
+    mode: restart
+    then:
+      - repeat:
+          count: 5
+          then:
+            - light.turn_on: onboard_led
+            - delay: 300ms
+            - light.turn_off: onboard_led
+            - delay: 300ms

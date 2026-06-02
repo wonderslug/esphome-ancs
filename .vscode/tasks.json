@@ -1,0 +1,138 @@
+{
+  "version": "2.0.0",
+
+  // ─── Inputs ─────────────────────────────────────────────────────────────
+  // Prompts shown when a task that uses ${input:...} is run.
+  "inputs": [
+    {
+      "id": "config",
+      "type": "pickString",
+      "description": "ESPHome config file",
+      "options": [
+        "tests/test-ancs.yaml",
+        "examples/d1-mini-blink-on-call.yaml",
+        "examples/d1-mini-blink-on-imessage.yaml",
+        "examples/d1-mini-call-and-missed-alerts.yaml"
+      ],
+      "default": "tests/test-ancs.yaml"
+    },
+    {
+      "id": "serialPort",
+      "type": "promptString",
+      "description": "Serial port  macOS: /dev/cu.SLAB_USBtoUART  or  /dev/cu.usbserial-*   Linux: /dev/ttyUSB0",
+      "default": "/dev/cu.usbserial-0001"
+    },
+    {
+      "id": "otaAddress",
+      "type": "promptString",
+      "description": "OTA target — IP address (192.168.1.xx) or mDNS hostname (ancs-test.local)",
+      "default": "ancs-test.local"
+    }
+  ],
+
+  "tasks": [
+
+    // ─── Testing ────────────────────────────────────────────────────────────
+
+    {
+      "label": "ANCS: Unit Tests",
+      "detail": "Build and run host-native protocol layer tests (no hardware needed)",
+      "type": "shell",
+      "command": "make",
+      "args": ["-C", "test", "test"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": { "kind": "test", "isDefault": true },
+      "presentation": { "reveal": "always", "panel": "shared", "focus": true },
+      // $gcc pattern turns compiler errors into editor diagnostics
+      "problemMatcher": ["$gcc"]
+    },
+
+    // ─── Build ──────────────────────────────────────────────────────────────
+
+    {
+      "label": "ANCS: Validate Config",
+      "detail": "Fast schema + codegen check — no C++ compilation",
+      "type": "shell",
+      "command": "esphome",
+      "args": ["config", "${input:config}"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "shared", "focus": true },
+      "problemMatcher": []
+    },
+
+    {
+      "label": "ANCS: Compile",
+      "detail": "Full ESPHome compile (C++ + link). First run downloads the ESP-IDF toolchain.",
+      "type": "shell",
+      "command": "esphome",
+      "args": ["compile", "${input:config}"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": { "kind": "build", "isDefault": true },
+      "presentation": { "reveal": "always", "panel": "shared", "focus": true },
+      "problemMatcher": ["$gcc"]
+    },
+
+    // ─── Upload ─────────────────────────────────────────────────────────────
+
+    {
+      "label": "ANCS: Upload — Serial",
+      "detail": "Compile (if needed) then flash via USB serial. You will be prompted for the port.",
+      "type": "shell",
+      "command": "esphome",
+      "args": ["upload", "--device", "${input:serialPort}", "${input:config}"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "shared", "focus": true },
+      "problemMatcher": []
+    },
+
+    {
+      "label": "ANCS: Upload — OTA",
+      "detail": "Compile (if needed) then flash over Wi-Fi. The device must already be running ESPHome.",
+      "type": "shell",
+      "command": "esphome",
+      "args": ["upload", "--device", "${input:otaAddress}", "${input:config}"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "shared", "focus": true },
+      "problemMatcher": []
+    },
+
+    // ─── Monitor ────────────────────────────────────────────────────────────
+
+    {
+      "label": "ANCS: Monitor — Serial",
+      "detail": "Open serial monitor (Ctrl+C to stop). You will be prompted for the port.",
+      "type": "shell",
+      "command": "esphome",
+      "args": ["logs", "--device", "${input:serialPort}", "${input:config}"],
+      "options": { "cwd": "${workspaceFolder}" },
+      // Dedicated panel so the log stream doesn't share space with build output
+      "presentation": { "reveal": "always", "panel": "dedicated", "focus": true },
+      "problemMatcher": []
+    },
+
+    // ─── Combined ───────────────────────────────────────────────────────────
+
+    {
+      "label": "ANCS: Run — Serial (compile + upload + monitor)",
+      "detail": "One-shot: compile, flash via USB serial, then stream logs. You will be prompted for the port.",
+      "type": "shell",
+      "command": "esphome",
+      "args": ["run", "--device", "${input:serialPort}", "${input:config}"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "dedicated", "focus": true },
+      "problemMatcher": []
+    },
+
+    {
+      "label": "ANCS: Run — OTA (compile + upload + monitor)",
+      "detail": "One-shot: compile, flash over Wi-Fi, then stream logs. Device must already be running ESPHome.",
+      "type": "shell",
+      "command": "esphome",
+      "args": ["run", "--device", "${input:otaAddress}", "${input:config}"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "dedicated", "focus": true },
+      "problemMatcher": []
+    }
+
+  ]
+}

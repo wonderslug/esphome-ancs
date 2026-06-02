@@ -1,0 +1,123 @@
+esphome:
+  name: ancs-call-alerts
+
+esp32:
+  board: wemos_d1_mini32
+  framework:
+    type: esp-idf
+
+logger:
+
+external_components:
+  - source:
+      type: local
+      path: ../components
+
+# ─── ANCS ────────────────────────────────────────────────────────────────────
+ancs:
+  id: my_ancs
+  name: "Call Alerts"          # shown in iOS Bluetooth when pairing via nRF Connect
+  # Category is in the 8-byte notification header — arrives instantly with no
+  # GATT roundtrip. We don't need app_id/title/message for this example.
+  auto_fetch_attributes: false
+
+  on_notification_added:
+    # Incoming call — blink fast until answered or declined.
+    - if:
+        condition:
+          lambda: 'return category == "incoming_call";'
+        then:
+          - logger.log: "Incoming call"
+          - script.execute: alert_ringing
+
+    # Missed call — slow breathe for ~9 s then fade out.
+    - if:
+        condition:
+          lambda: 'return category == "missed_call";'
+        then:
+          - logger.log: "Missed call"
+          - script.execute: alert_breathe
+
+    # Voicemail — same slow breathe as missed call.
+    - if:
+        condition:
+          lambda: 'return category == "voicemail";'
+        then:
+          - logger.log: "Voicemail"
+          - script.execute: alert_breathe
+
+  on_notification_removed:
+    # Call answered or declined — stop blinking immediately.
+    - if:
+        condition:
+          lambda: 'return category == "incoming_call";'
+        then:
+          - script.stop: alert_ringing
+          - light.turn_off: onboard_led
+
+  on_connect:
+    - logger.log: "iPhone connected"
+  on_disconnect:
+    - logger.log: "iPhone disconnected"
+    - script.stop: alert_ringing
+    - script.stop: alert_breathe
+    - light.turn_off: onboard_led
+
+# ─── LED — LEDC output for PWM breathing ─────────────────────────────────────
+# LEDC (LED Control) enables PWM on GPIO2, which lets ESPHome smoothly fade
+# the brightness for the breathe effect. GPIO2 = onboard LED, active-high.
+output:
+  - platform: ledc
+    pin: GPIO2
+    id: led_gpio
+
+light:
+  - platform: monochromatic
+    output: led_gpio
+    id: onboard_led
+    name: "Alert LED"
+    restore_mode: ALWAYS_OFF
+    effects:
+      # Slow pulse used for missed call and voicemail.
+      # One full cycle = transition_length × 2 = 3 s.
+      - pulse:
+          name: "Breathe Slow"
+          transition_length: 1500ms
+          update_interval: 16ms
+          min_brightness: 0%
+          max_brightness: 80%
+
+# ─── Scripts ─────────────────────────────────────────────────────────────────
+script:
+  # Incoming call: 3 fast blinks (100 ms on/off), 500 ms pause, repeat.
+  # Mirrors the bluebell reference pattern. mode: restart so a second call
+  # notification (rare but possible) resets cleanly.
+  - id: alert_ringing
+    mode: restart
+    then:
+      - while:
+          condition:
+            lambda: 'return true;'
+          then:
+            - repeat:
+                count: 3
+                then:
+                  - light.turn_on:
+                      id: onboard_led
+                      brightness: 100%
+                      transition_length: 0s
+                  - delay: 100ms
+                  - light.turn_off: onboard_led
+                  - delay: 100ms
+            - delay: 500ms
+
+  # Missed call / voicemail: smooth breathe for ~9 s (3 full cycles) then off.
+  # mode: restart so back-to-back missed calls restart the window.
+  - id: alert_breathe
+    mode: restart
+    then:
+      - light.turn_on:
+          id: onboard_led
+          effect: "Breathe Slow"
+      - delay: 9000ms
+      - light.turn_off: onboard_led
