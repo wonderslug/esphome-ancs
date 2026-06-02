@@ -13,11 +13,10 @@ Grandma still won't answer. But now *the whole house knows.*
 ---
 
 # ESPHome ANCS Component
-
+[![ESPHome](https://img.shields.io/badge/dynamic/regex?url=https%3A%2F%2Fraw.githubusercontent.com%2Fwonderslug%2Fesphome-ancs%2Fmaster%2Frequirements.txt&search=esphome%3D%3D%28.%2A%29&replace=%241&label=ESPHome&logo=esphome&logoColor=white&color=000000)](requirements.txt)
 [![ESPHome Compile](https://github.com/wonderslug/esphome-ancs/actions/workflows/compile.yml/badge.svg)](https://github.com/wonderslug/esphome-ancs/actions/workflows/compile.yml)
 [![Host Unit Tests](https://github.com/wonderslug/esphome-ancs/actions/workflows/test.yml/badge.svg)](https://github.com/wonderslug/esphome-ancs/actions/workflows/test.yml)
 [![Lint](https://github.com/wonderslug/esphome-ancs/actions/workflows/lint.yml/badge.svg)](https://github.com/wonderslug/esphome-ancs/actions/workflows/lint.yml)
-[![ESPHome](https://img.shields.io/badge/dynamic/regex?url=https%3A%2F%2Fraw.githubusercontent.com%2Fwonderslug%2Fesphome-ancs%2Fmaster%2Frequirements.txt&search=esphome%3D%3D%28.%2A%29&replace=%241&label=ESPHome&logo=esphome&logoColor=white&color=000000)](requirements.txt)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 This is an ESPHome external component that turns an ESP32 into an Apple Notification Center Service (ANCS) consumer. When a bonded iPhone receives a notification — an incoming call, iMessage, app alert, and so on — the ANCS events drive ESPHome automations and sensor entities directly on the device. The component runs on the native NimBLE stack over ESP-IDF; because the ESP32's Bluetooth radio is dedicated to ANCS, it cannot coexist with Bluedroid-based features such as `bluetooth_proxy`, `esp32_ble_tracker`, or `ble_client`.
