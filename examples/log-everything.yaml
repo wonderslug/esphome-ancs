@@ -1,0 +1,117 @@
+# Log-everything example
+# ───────────────────────────────────────────────────────────────────────────
+# A diagnostic config that logs *every* ANCS event and *every* notification
+# category to the ESPHome logger. Flash this, run `esphome logs`, and watch
+# the full notification stream from your iPhone scroll by — useful for
+# discovering which categories/apps fire and for debugging your own configs.
+#
+# Because `category` is a plain string variable, a single log line per trigger
+# already prints all 12 categories as they arrive:
+#   other, incoming_call, missed_call, voicemail, social, schedule, email,
+#   news, health_fitness, business_finance, location, entertainment
+#
+# Pair via nRF Connect (see the README — Settings → Bluetooth will NOT work).
+
+esphome:
+  name: ancs-log-everything
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+# Verbose so every logger.log line below is shown.
+logger:
+  level: DEBUG
+
+external_components:
+  - source:
+      type: local
+      path: ../components
+
+# ─── ANCS ────────────────────────────────────────────────────────────────────
+ancs:
+  id: my_ancs
+  name: "ANCS Log Everything"   # shown in iOS Bluetooth when pairing via nRF Connect
+
+  # Fetch the full attribute set so on_notification_attributes can log them all.
+  auto_fetch_attributes: true
+  fetch_attributes: [app_id, title, subtitle, message]
+
+  on_connect:
+    - logger.log:
+        format: "CONNECT  iPhone connected"
+        tag: "ancs.demo"
+
+  on_disconnect:
+    - logger.log:
+        format: "DISCONNECT  iPhone disconnected"
+        tag: "ancs.demo"
+
+  # Fires instantly from the 8-byte notification header — no GATT roundtrip.
+  # The flag bits are decoded inline so silent/important/pre-existing/action
+  # notifications are visible in the log.
+  on_notification_added:
+    - logger.log:
+        format: "ADDED     uid=%u  cat=%-16s  count=%u  flags=0x%02X [%s%s%s%s%s]"
+        tag: "ancs.demo"
+        args:
+          - uid
+          - category.c_str()
+          - category_count
+          - flags
+          - '(flags & 0x01) ? "silent " : ""'
+          - '(flags & 0x02) ? "important " : ""'
+          - '(flags & 0x04) ? "pre_existing " : ""'
+          - '(flags & 0x08) ? "positive_action " : ""'
+          - '(flags & 0x10) ? "negative_action " : ""'
+
+  # Fires after the GATT roundtrip, once the requested text has arrived.
+  on_notification_attributes:
+    - logger.log:
+        format: "ATTRS     uid=%u  cat=%-16s  app=%s  title=%s  sub=%s  msg=%s"
+        tag: "ancs.demo"
+        args:
+          - uid
+          - category.c_str()
+          - app_id.c_str()
+          - title.c_str()
+          - subtitle.c_str()
+          - message.c_str()
+
+  # Fires when an existing notification is updated (e.g. call accepted elsewhere).
+  on_notification_modified:
+    - logger.log:
+        format: "MODIFIED  uid=%u  cat=%-16s  flags=0x%02X"
+        tag: "ancs.demo"
+        args: [uid, category.c_str(), flags]
+
+  # Fires when the notification is dismissed/acknowledged on the iPhone.
+  on_notification_removed:
+    - logger.log:
+        format: "REMOVED   uid=%u  cat=%-16s"
+        tag: "ancs.demo"
+        args: [uid, category.c_str()]
+
+# ─── Sensors ─────────────────────────────────────────────────────────────────
+# Mirror the latest event into entities too, so it's all visible at a glance
+# (e.g. in the ESPHome web server or Home Assistant), not just in the log.
+binary_sensor:
+  - platform: ancs
+    ancs_id: my_ancs
+    connected:
+      name: "iPhone Connected"
+    call_active:
+      name: "Call Active"
+
+text_sensor:
+  - platform: ancs
+    ancs_id: my_ancs
+    last_title:
+      name: "Last Notification"
+    last_message:
+      name: "Last Message"
+    last_app_id:
+      name: "Last App ID"
+    last_caller:
+      name: "Last Caller"
