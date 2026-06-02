@@ -1,4 +1,4 @@
-## 📵 Grandma's not answering her phone. Its on silent mode again.
+## 📵 Grandma's not answering her phone. She left it on silent again.
 
 **And it's an iPhone**, so what can I do?
 
@@ -17,6 +17,7 @@ Grandma still won't answer. But now *the whole house knows.*
 [![ESPHome Compile](https://github.com/wonderslug/esphome-ancs/actions/workflows/compile.yml/badge.svg)](https://github.com/wonderslug/esphome-ancs/actions/workflows/compile.yml)
 [![Host Unit Tests](https://github.com/wonderslug/esphome-ancs/actions/workflows/test.yml/badge.svg)](https://github.com/wonderslug/esphome-ancs/actions/workflows/test.yml)
 [![Lint](https://github.com/wonderslug/esphome-ancs/actions/workflows/lint.yml/badge.svg)](https://github.com/wonderslug/esphome-ancs/actions/workflows/lint.yml)
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 This is an ESPHome external component that turns an ESP32 into an Apple Notification Center Service (ANCS) consumer. When a bonded iPhone receives a notification — an incoming call, iMessage, app alert, and so on — the ANCS events drive ESPHome automations and sensor entities directly on the device. The component runs on the native NimBLE stack over ESP-IDF; because the ESP32's Bluetooth radio is dedicated to ANCS, it cannot coexist with Bluedroid-based features such as `bluetooth_proxy`, `esp32_ble_tracker`, or `ble_client`.
