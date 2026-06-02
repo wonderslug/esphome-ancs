@@ -1,0 +1,98 @@
+name: Lint
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+# Four parallel jobs — each maps to one required status check in GitHub
+# branch protection. All must pass before a PR can be merged.
+jobs:
+
+  # ─── 1. License headers ───────────────────────────────────────────────────
+  # Every .h, .cpp, and .py source file must begin with the SPDX identifier.
+  license-headers:
+    name: License headers
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check SPDX license headers
+        run: |
+          missing=0
+          while IFS= read -r -d '' f; do
+            if ! grep -q 'SPDX-License-Identifier: MIT' "$f"; then
+              echo "::error file=$f::Missing SPDX-License-Identifier: MIT header"
+              missing=$((missing + 1))
+            fi
+          done < <(find components/ancs test -name '*.h' -o -name '*.cpp' -o -name '*.py' \
+                   | grep -v doctest.h \
+                   | tr '\n' '\0')
+          if [ "$missing" -gt 0 ]; then
+            echo "$missing file(s) missing the SPDX header."
+            exit 1
+          fi
+          echo "All source files have SPDX-License-Identifier: MIT ✓"
+
+  # ─── 2. C++ formatting ────────────────────────────────────────────────────
+  # clang-format must produce no diff against the committed code.
+  clang-format:
+    name: C++ formatting (clang-format)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install clang-format
+        run: sudo apt-get install -y --no-install-recommends clang-format
+
+      - name: Check C++ formatting
+        run: |
+          files=$(find components/ancs test -name '*.h' -o -name '*.cpp' \
+                  | grep -v doctest.h)
+          if ! echo "$files" | xargs clang-format --dry-run --Werror 2>&1; then
+            echo ""
+            echo "Run 'clang-format -i <file>' locally to fix formatting,"
+            echo "or apply the full fix with:"
+            echo "  find components/ancs test -name '*.h' -o -name '*.cpp' | grep -v doctest.h | xargs clang-format -i"
+            exit 1
+          fi
+          echo "C++ formatting is clean ✓"
+
+  # ─── 3. Python linting ────────────────────────────────────────────────────
+  # ruff checks style (E/W/F) and import order (I) in the codegen files.
+  ruff:
+    name: Python linting (ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Lint
+        run: ruff check components/
+
+      - name: Format check
+        run: ruff format --check components/
+
+  # ─── 4. YAML linting ──────────────────────────────────────────────────────
+  # yamllint validates GitHub Actions workflow files.
+  # ESPHome YAML files (tests/, examples/) use custom tags (!lambda, !include)
+  # not understood by yamllint; they are validated by `esphome config` in
+  # the compile workflow instead.
+  yaml-lint:
+    name: YAML linting (yamllint)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install yamllint
+        run: pip install yamllint
+
+      - name: Lint GitHub Actions workflows
+        run: yamllint -c .yamllint.yml .github/workflows/

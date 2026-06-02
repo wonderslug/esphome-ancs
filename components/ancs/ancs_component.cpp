@@ -18,8 +18,10 @@ void AncsComponent::setup() {
   cfg.fetch_attributes = fetch_attrs_;
   ble_.init(cfg);
 #ifdef USE_BINARY_SENSOR
-  if (connected_bs_) connected_bs_->publish_initial_state(false);
-  if (call_active_bs_) call_active_bs_->publish_initial_state(false);
+  if (connected_bs_)
+    connected_bs_->publish_initial_state(false);
+  if (call_active_bs_)
+    call_active_bs_->publish_initial_state(false);
 #endif
 }
 
@@ -32,23 +34,31 @@ void AncsComponent::loop() {
       case BleEventType::CONNECTED:
         ESP_LOGI(TAG, "iPhone connected: %s", ev.device_name.c_str());
 #ifdef USE_BINARY_SENSOR
-        if (connected_bs_) connected_bs_->publish_state(true);
+        if (connected_bs_)
+          connected_bs_->publish_state(true);
 #endif
 #ifdef USE_TEXT_SENSOR
-        if (connected_device_ts_) connected_device_ts_->publish_state(ev.device_name);
+        if (connected_device_ts_)
+          connected_device_ts_->publish_state(ev.device_name);
 #endif
         on_connect_.call();
         break;
       case BleEventType::DISCONNECTED:
         ESP_LOGI(TAG, "iPhone disconnected");
 #ifdef USE_BINARY_SENSOR
-        if (connected_bs_) connected_bs_->publish_state(false);
-        if (call_active_) { call_active_ = false; if (call_active_bs_) call_active_bs_->publish_state(false); }
+        if (connected_bs_)
+          connected_bs_->publish_state(false);
+        if (call_active_) {
+          call_active_ = false;
+          if (call_active_bs_)
+            call_active_bs_->publish_state(false);
+        }
 #else
         call_active_ = false;
 #endif
 #ifdef USE_TEXT_SENSOR
-        if (connected_device_ts_) connected_device_ts_->publish_state("");
+        if (connected_device_ts_)
+          connected_device_ts_->publish_state("");
 #endif
         on_disconnect_.call();
         break;
@@ -56,7 +66,8 @@ void AncsComponent::loop() {
         if (ev.category == protocol::Category::INCOMING_CALL) {
           call_active_ = true;
 #ifdef USE_BINARY_SENSOR
-          if (call_active_bs_) call_active_bs_->publish_state(true);
+          if (call_active_bs_)
+            call_active_bs_->publish_state(true);
 #endif
         }
         on_added_.call(ev.uid, cat, ev.category_count, ev.flags);
@@ -68,16 +79,20 @@ void AncsComponent::loop() {
         if (ev.category == protocol::Category::INCOMING_CALL && call_active_) {
           call_active_ = false;
 #ifdef USE_BINARY_SENSOR
-          if (call_active_bs_) call_active_bs_->publish_state(false);
+          if (call_active_bs_)
+            call_active_bs_->publish_state(false);
 #endif
         }
         on_removed_.call(ev.uid, cat);
         break;
       case BleEventType::ATTRIBUTES:
 #ifdef USE_TEXT_SENSOR
-        if (last_title_ts_) last_title_ts_->publish_state(ev.title);
-        if (last_message_ts_) last_message_ts_->publish_state(ev.message);
-        if (last_app_id_ts_) last_app_id_ts_->publish_state(ev.app_id);
+        if (last_title_ts_)
+          last_title_ts_->publish_state(ev.title);
+        if (last_message_ts_)
+          last_message_ts_->publish_state(ev.message);
+        if (last_app_id_ts_)
+          last_app_id_ts_->publish_state(ev.app_id);
         if (last_caller_ts_ && ev.category == protocol::Category::INCOMING_CALL)
           last_caller_ts_->publish_state(ev.title);
 #endif

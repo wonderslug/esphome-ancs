@@ -3,10 +3,10 @@
 
 import esphome.codegen as cg
 import esphome.config_validation as cv
-from esphome import automation
-from esphome.const import CONF_ID, CONF_NAME, CONF_TRIGGER_ID
-from esphome.components.esp32 import add_idf_sdkconfig_option
 import esphome.final_validate as fv
+from esphome import automation
+from esphome.components.esp32 import add_idf_sdkconfig_option
+from esphome.const import CONF_ID, CONF_NAME, CONF_TRIGGER_ID
 
 CODEOWNERS = ["@brian"]
 DEPENDENCIES = ["esp32"]
@@ -53,9 +53,9 @@ CONFIG_SCHEMA = cv.Schema(
         cv.GenerateID(): cv.declare_id(AncsComponent),
         cv.Optional(CONF_NAME, default="ESPHome-ANCS"): cv.All(cv.string, cv.Length(max=29)),
         cv.Optional(CONF_AUTO_FETCH_ATTRIBUTES, default=True): cv.boolean,
-        cv.Optional(
-            CONF_FETCH_ATTRIBUTES, default=["app_id", "title", "message"]
-        ): cv.ensure_list(cv.one_of(*FETCH_ATTRIBUTE_OPTIONS, lower=True)),
+        cv.Optional(CONF_FETCH_ATTRIBUTES, default=["app_id", "title", "message"]): cv.ensure_list(
+            cv.one_of(*FETCH_ATTRIBUTE_OPTIONS, lower=True)
+        ),
         cv.Optional(CONF_MANUFACTURER, default="ESPHome"): cv.All(cv.string, cv.Length(max=20)),
         cv.Optional(CONF_MODEL, default="ANCS Node"): cv.All(cv.string, cv.Length(max=20)),
         cv.Optional(CONF_MAX_BONDS, default=3): cv.int_range(min=1, max=9),
@@ -83,7 +83,12 @@ CONFIG_SCHEMA = cv.Schema(
 
 def _validate_no_bluedroid_ble(config):
     # NimBLE owns the radio; reject Bluedroid-based BLE stacks in the same build.
-    conflicting = {"esp32_ble", "esp32_ble_tracker", "esp32_ble_server", "bluetooth_proxy"}
+    conflicting = {
+        "esp32_ble",
+        "esp32_ble_tracker",
+        "esp32_ble_server",
+        "bluetooth_proxy",
+    }
     full_config = fv.full_config.get()
     present = conflicting.intersection(full_config.keys())
     if present:
@@ -118,13 +123,20 @@ async def to_code(config):
         trig = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
         await automation.build_automation(
             trig,
-            [(cg.uint32, "uid"), (cg.std_string, "category"), (cg.uint8, "category_count"), (cg.uint8, "flags")],
+            [
+                (cg.uint32, "uid"),
+                (cg.std_string, "category"),
+                (cg.uint8, "category_count"),
+                (cg.uint8, "flags"),
+            ],
             conf,
         )
     for conf in config.get(CONF_ON_NOTIFICATION_MODIFIED, []):
         trig = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
         await automation.build_automation(
-            trig, [(cg.uint32, "uid"), (cg.std_string, "category"), (cg.uint8, "flags")], conf
+            trig,
+            [(cg.uint32, "uid"), (cg.std_string, "category"), (cg.uint8, "flags")],
+            conf,
         )
     for conf in config.get(CONF_ON_NOTIFICATION_REMOVED, []):
         trig = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
@@ -167,9 +179,7 @@ async def to_code(config):
     add_idf_sdkconfig_option("CONFIG_BT_NIMBLE_MAX_CCCDS", 8)
 
 
-_ACTION_SCHEMA = automation.maybe_simple_id(
-    {cv.GenerateID(): cv.use_id(AncsComponent)}
-)
+_ACTION_SCHEMA = automation.maybe_simple_id({cv.GenerateID(): cv.use_id(AncsComponent)})
 
 
 @automation.register_action("ancs.clear_bonds", ClearBondsAction, _ACTION_SCHEMA, synchronous=True)

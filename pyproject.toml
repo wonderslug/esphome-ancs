@@ -1,0 +1,16 @@
+[tool.ruff]
+# Match the C++ column limit
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+# E/W = pycodestyle errors/warnings, F = pyflakes, I = isort
+select = ["E", "W", "F", "I"]
+ignore = [
+  # ESPHome codegen modules commonly have module-level code that pylint
+  # would flag but is intentional (e.g. module-level class definitions).
+  "E402",  # module level import not at top of file
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["esphome"]

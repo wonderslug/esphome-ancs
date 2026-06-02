@@ -12,10 +12,10 @@ namespace ancs {
 namespace protocol {
 
 // 128-bit ANCS UUID strings (big-endian text form)
-static constexpr const char *SERVICE_UUID   = "7905F431-B5CE-4E99-A40F-4B1E122D00D0";
+static constexpr const char *SERVICE_UUID = "7905F431-B5CE-4E99-A40F-4B1E122D00D0";
 static constexpr const char *NOTIF_SRC_UUID = "9FBF120D-6301-42D9-8C58-25E699A21DBD";
 static constexpr const char *CTRL_POINT_UUID = "69D1D8F3-45E1-49A8-9821-9BBDFDAAD9D9";
-static constexpr const char *DATA_SRC_UUID  = "22EAC6E9-24D6-4BB5-BE44-B36ACE7C7BFB";
+static constexpr const char *DATA_SRC_UUID = "22EAC6E9-24D6-4BB5-BE44-B36ACE7C7BFB";
 
 enum class EventId : uint8_t { ADDED = 0, MODIFIED = 1, REMOVED = 2 };
 
@@ -28,14 +28,29 @@ enum EventFlags : uint8_t {
 };
 
 enum class Category : uint8_t {
-  OTHER = 0, INCOMING_CALL = 1, MISSED_CALL = 2, VOICEMAIL = 3, SOCIAL = 4,
-  SCHEDULE = 5, EMAIL = 6, NEWS = 7, HEALTH_FITNESS = 8, BUSINESS_FINANCE = 9,
-  LOCATION = 10, ENTERTAINMENT = 11,
+  OTHER = 0,
+  INCOMING_CALL = 1,
+  MISSED_CALL = 2,
+  VOICEMAIL = 3,
+  SOCIAL = 4,
+  SCHEDULE = 5,
+  EMAIL = 6,
+  NEWS = 7,
+  HEALTH_FITNESS = 8,
+  BUSINESS_FINANCE = 9,
+  LOCATION = 10,
+  ENTERTAINMENT = 11,
 };
 
 enum class AttributeId : uint8_t {
-  APP_IDENTIFIER = 0, TITLE = 1, SUBTITLE = 2, MESSAGE = 3, MESSAGE_SIZE = 4,
-  DATE = 5, POSITIVE_ACTION_LABEL = 6, NEGATIVE_ACTION_LABEL = 7,
+  APP_IDENTIFIER = 0,
+  TITLE = 1,
+  SUBTITLE = 2,
+  MESSAGE = 3,
+  MESSAGE_SIZE = 4,
+  DATE = 5,
+  POSITIVE_ACTION_LABEL = 6,
+  NEGATIVE_ACTION_LABEL = 7,
 };
 
 const char *category_to_string(Category c);
@@ -69,8 +84,8 @@ inline bool attribute_has_max_len(AttributeId id) {
 
 // Build a GetNotificationAttributes (CommandID 0x00) request.
 // Returns number of bytes written, or 0 if it would not fit in out_cap.
-size_t build_get_notification_attributes(uint32_t uid, const AttributeRequest *reqs,
-                                         size_t n_reqs, uint8_t *out, size_t out_cap);
+size_t build_get_notification_attributes(uint32_t uid, const AttributeRequest *reqs, size_t n_reqs, uint8_t *out,
+                                         size_t out_cap);
 
 static constexpr size_t ANCS_ATTR_BUF_SIZE = 512;
 

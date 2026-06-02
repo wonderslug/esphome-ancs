@@ -4,7 +4,8 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import binary_sensor
-from . import ancs_ns, AncsComponent
+
+from . import AncsComponent
 
 CONF_ANCS_ID = "ancs_id"
 CONF_CONNECTED = "connected"

@@ -1,0 +1,26 @@
+# ESPHome component style — derived from ESPHome's own .clang-format
+BasedOnStyle: Google
+ColumnLimit: 120
+IndentWidth: 2
+TabWidth: 2
+UseTab: Never
+
+# Brace style
+BreakBeforeBraces: Attach
+
+# Functions
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+
+# Pointers and references: keep * and & with the variable name
+PointerAlignment: Right
+DerivePointerAlignment: false
+
+# Keep include order as written — ESPHome includes are load-bearing
+SortIncludes: false
+IncludeBlocks: Preserve
+
+# Misc
+SpaceAfterTemplateKeyword: true
+Standard: c++17

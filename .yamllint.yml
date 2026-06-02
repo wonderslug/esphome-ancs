@@ -1,0 +1,19 @@
+# Only used for GitHub Actions workflow files.
+# ESPHome YAML files (tests/, examples/) use custom tags (!lambda, !include)
+# that standard yamllint does not understand — they are validated instead by
+# `esphome config` in the compile workflow.
+extends: default
+
+rules:
+  line-length:
+    max: 150
+    level: warning
+  comments:
+    min-spaces-from-content: 1
+  truthy:
+    # GitHub Actions uses 'on' as a key; allow it.
+    allowed-values: ['true', 'false', 'yes', 'no', 'on', 'off']
+    check-keys: false
+  braces:
+    forbid: false
+  document-start: disable

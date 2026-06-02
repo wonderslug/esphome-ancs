@@ -67,15 +67,16 @@ TEST_CASE("parse_notification_source unknown category preserved as raw") {
 TEST_CASE("build_get_notification_attributes emits correct bytes") {
   // Request APP_IDENTIFIER (no max_len) + TITLE (max_len 32) for uid 0x04030201
   AttributeRequest reqs[] = {
-    {AttributeId::APP_IDENTIFIER, 0},
-    {AttributeId::TITLE, 32},
+      {AttributeId::APP_IDENTIFIER, 0},
+      {AttributeId::TITLE, 32},
   };
   uint8_t buf[32];
   size_t n = build_get_notification_attributes(0x04030201u, reqs, 2, buf, sizeof(buf));
   // [0x00][uid LE x4][0x00][0x01][32,0]
   const uint8_t expected[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x00, 0x01, 0x20, 0x00};
   REQUIRE(n == sizeof(expected));
-  for (size_t i = 0; i < n; i++) CHECK(buf[i] == expected[i]);
+  for (size_t i = 0; i < n; i++)
+    CHECK(buf[i] == expected[i]);
 }
 
 TEST_CASE("build_get_notification_attributes returns 0 on insufficient buffer") {
@@ -86,17 +87,19 @@ TEST_CASE("build_get_notification_attributes returns 0 on insufficient buffer") 
 
 // Helper: build a GetNotificationAttributes RESPONSE stream.
 // [0x00][uid LE x4]({id}{len LE x2}{value})...
-static std::vector<uint8_t> make_response(uint32_t uid,
-    const std::vector<std::pair<AttributeId, std::string>> &attrs) {
+static std::vector<uint8_t> make_response(uint32_t uid, const std::vector<std::pair<AttributeId, std::string>> &attrs) {
   std::vector<uint8_t> v;
   v.push_back(0x00);
-  v.push_back(uid & 0xFF); v.push_back((uid >> 8) & 0xFF);
-  v.push_back((uid >> 16) & 0xFF); v.push_back((uid >> 24) & 0xFF);
+  v.push_back(uid & 0xFF);
+  v.push_back((uid >> 8) & 0xFF);
+  v.push_back((uid >> 16) & 0xFF);
+  v.push_back((uid >> 24) & 0xFF);
   for (auto &a : attrs) {
     v.push_back(static_cast<uint8_t>(a.first));
     v.push_back(a.second.size() & 0xFF);
     v.push_back((a.second.size() >> 8) & 0xFF);
-    for (char c : a.second) v.push_back(static_cast<uint8_t>(c));
+    for (char c : a.second)
+      v.push_back(static_cast<uint8_t>(c));
   }
   return v;
 }
@@ -104,8 +107,8 @@ static std::vector<uint8_t> make_response(uint32_t uid,
 TEST_CASE("DataSourceAssembler parses a single-packet response") {
   DataSourceAssembler asm_;
   asm_.reset(0x04030201u, {AttributeId::APP_IDENTIFIER, AttributeId::TITLE});
-  auto stream = make_response(0x04030201u,
-      {{AttributeId::APP_IDENTIFIER, "com.apple.mobilephone"}, {AttributeId::TITLE, "Mom"}});
+  auto stream =
+      make_response(0x04030201u, {{AttributeId::APP_IDENTIFIER, "com.apple.mobilephone"}, {AttributeId::TITLE, "Mom"}});
   CHECK(asm_.feed(stream.data(), stream.size()) == DataSourceAssembler::Status::COMPLETE);
   CHECK(asm_.value(AttributeId::TITLE) == "Mom");
   CHECK(asm_.value(AttributeId::APP_IDENTIFIER) == "com.apple.mobilephone");
@@ -125,8 +128,7 @@ TEST_CASE("DataSourceAssembler reassembles across a mid-value split") {
 TEST_CASE("DataSourceAssembler reassembles across a mid-header split") {
   DataSourceAssembler asm_;
   asm_.reset(0x04030201u, {AttributeId::APP_IDENTIFIER, AttributeId::TITLE});
-  auto s = make_response(0x04030201u,
-      {{AttributeId::APP_IDENTIFIER, "a"}, {AttributeId::TITLE, "Bob"}});
+  auto s = make_response(0x04030201u, {{AttributeId::APP_IDENTIFIER, "a"}, {AttributeId::TITLE, "Bob"}});
   // cut inside the TITLE header (after app_id value, mid length field)
   size_t cut = 5 + 3 + 1 + 1;  // header + appid header + appid value + 1 byte into title header
   CHECK(asm_.feed(s.data(), cut) == DataSourceAssembler::Status::NEED_MORE);
@@ -137,10 +139,10 @@ TEST_CASE("DataSourceAssembler reassembles across a mid-header split") {
 TEST_CASE("DataSourceAssembler byte-at-a-time reassembly") {
   DataSourceAssembler asm_;
   asm_.reset(0x04030201u, {AttributeId::APP_IDENTIFIER, AttributeId::TITLE});
-  auto s = make_response(0x04030201u,
-      {{AttributeId::APP_IDENTIFIER, "x"}, {AttributeId::TITLE, "Carol"}});
+  auto s = make_response(0x04030201u, {{AttributeId::APP_IDENTIFIER, "x"}, {AttributeId::TITLE, "Carol"}});
   DataSourceAssembler::Status st = DataSourceAssembler::Status::NEED_MORE;
-  for (size_t i = 0; i < s.size(); i++) st = asm_.feed(&s[i], 1);
+  for (size_t i = 0; i < s.size(); i++)
+    st = asm_.feed(&s[i], 1);
   CHECK(st == DataSourceAssembler::Status::COMPLETE);
   CHECK(asm_.value(AttributeId::TITLE) == "Carol");
 }
