@@ -1,0 +1,132 @@
+# Home Assistant Events Example
+# ─────────────────────────────────────────────────────────────────────────────
+# Demonstrates using the ancs-ha-events package to fire HA events from iPhone
+# notifications. Flash this config, pair via nRF Connect (see README), and
+# configure matching automations in Home Assistant.
+#
+# Three events are fired automatically by the included package:
+#
+#   esphome.ancs_incoming_call  — when an incoming call's attributes arrive
+#   esphome.ancs_notification   — when any non-call notification's attributes arrive
+#   esphome.ancs_call_ended     — when the incoming call is dismissed or answered
+#
+# ─── Home Assistant automation skeletons ─────────────────────────────────────
+#
+# Paste these into Home Assistant → Settings → Automations → New → Edit as YAML
+#
+# 1. Flash a light on incoming call:
+#
+#   trigger:
+#     - platform: event
+#       event_type: esphome.ancs_incoming_call
+#   action:
+#     - service: light.turn_on
+#       target:
+#         entity_id: light.YOUR_LIGHT
+#       data:
+#         flash: long
+#
+# 2. Stop flashing when the call ends:
+#
+#   trigger:
+#     - platform: event
+#       event_type: esphome.ancs_call_ended
+#   action:
+#     - service: light.turn_off
+#       target:
+#         entity_id: light.YOUR_LIGHT
+#
+# 3. Announce the caller's name via TTS:
+#
+#   trigger:
+#     - platform: event
+#       event_type: esphome.ancs_incoming_call
+#   action:
+#     - service: tts.cloud_say
+#       data:
+#         entity_id: media_player.YOUR_SPEAKER
+#         message: "Incoming call from {{ trigger.event.data.caller }}"
+#
+# 4. React to a specific app notification (filter by app_id):
+#
+#   trigger:
+#     - platform: event
+#       event_type: esphome.ancs_notification
+#       event_data:
+#         app_id: com.apple.MobileSMS
+#   action:
+#     - service: notify.YOUR_NOTIFY_SERVICE
+#       data:
+#         message: "iMessage from {{ trigger.event.data.title }}: {{ trigger.event.data.message }}"
+#
+# 5. React to a notification category:
+#
+#   trigger:
+#     - platform: event
+#       event_type: esphome.ancs_notification
+#       event_data:
+#         category: email  # valid categories: other, incoming_call, missed_call, voicemail, social, schedule, email, news, health_fitness, business_finance, location, entertainment
+#   action:
+#     - service: script.announce_email
+#       data:
+#         sender: "{{ trigger.event.data.title }}"
+#         subject: "{{ trigger.event.data.message }}"
+#
+# See docs/app-id-reference.md for a full list of iOS app bundle IDs.
+# ─────────────────────────────────────────────────────────────────────────────
+
+esphome:
+  name: ancs-ha-bridge
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+logger:
+  level: INFO
+
+# api: is required — events travel over the ESPHome native API.
+# For production, uncomment the encryption block and paste the key from
+# the ESPHome add-on in Home Assistant (Settings → Add-ons → ESPHome → key icon).
+api:
+  # encryption:
+  #   key: "your-32-byte-base64-key-from-ha-esphome-addon"
+
+ota:
+  - platform: esphome
+    password: ""
+
+# For local development, use the local path. For production, switch to the
+# GitHub source below and comment out the local block.
+external_components:
+  - source:
+      type: local
+      path: ../components
+  # Production:
+  # - source:
+  #     type: git
+  #     url: https://github.com/wonderslug/esphome-ancs
+  #     ref: master
+  #   components: [ancs]
+
+# ─── ANCS ────────────────────────────────────────────────────────────────────
+ancs:
+  id: my_ancs
+  name: "ANCS HA Bridge"       # shown in iOS when pairing via nRF Connect
+  auto_fetch_attributes: true
+  # Must include all attributes the package uses for event payloads.
+  fetch_attributes: [app_id, title, subtitle, message]
+
+# ─── Package ─────────────────────────────────────────────────────────────────
+# Wires on_notification_attributes and on_notification_removed to HA events.
+# For production with GitHub source, use:
+#   ancs_ha_events: github://wonderslug/esphome-ancs/packages/ancs-ha-events.yaml@master
+packages:
+  ancs_ha_events: !include ../packages/ancs-ha-events.yaml
+
+# ─── Network ─────────────────────────────────────────────────────────────────
+# Add your wifi or ethernet config here. Example:
+# wifi:
+#   ssid: !secret wifi_ssid
+#   password: !secret wifi_password

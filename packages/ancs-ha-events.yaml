@@ -1,0 +1,64 @@
+# ESPHome ANCS Component — Home Assistant events package
+#
+# Fires three HA events when iPhone notifications arrive via ANCS:
+#
+#   esphome.ancs_incoming_call  — incoming call; payload: uid, caller, app_id, device_name
+#   esphome.ancs_notification   — all other categories; payload: uid, category, app_id,
+#                                 title, subtitle, message, device_name
+#   esphome.ancs_call_ended     — call dismissed or answered; payload: uid, device_name
+#
+# Requirements:
+#   - ancs: block in your main config with:
+#       id: my_ancs
+#       auto_fetch_attributes: true
+#       fetch_attributes: [app_id, title, subtitle, message]  # title = caller name for incoming calls
+#   - api: configured in your main config (events travel over the ESPHome API)
+#
+# Usage (GitHub — recommended):
+#   packages:
+#     ancs_ha_events: github://wonderslug/esphome-ancs/packages/ancs-ha-events.yaml@master
+#
+# Pin to a release for production:
+#   packages:
+#     ancs_ha_events: github://wonderslug/esphome-ancs/packages/ancs-ha-events.yaml@v1.0.0
+#
+# Local development:
+#   packages:
+#     ancs_ha_events: !include packages/ancs-ha-events.yaml
+
+ancs:
+  on_notification_attributes:
+    - if:
+        condition:
+          lambda: 'return category == "incoming_call";'
+        then:
+          - homeassistant.event:
+              event: esphome.ancs_incoming_call
+              data:
+                uid: !lambda 'return std::to_string(uid);'
+                caller: !lambda 'return title;'
+                app_id: !lambda 'return app_id;'
+                device_name: !lambda 'return std::string(App.get_name());'
+        else:
+          - homeassistant.event:
+              event: esphome.ancs_notification
+              data:
+                uid: !lambda 'return std::to_string(uid);'
+                category: !lambda 'return category;'
+                app_id: !lambda 'return app_id;'
+                title: !lambda 'return title;'
+                subtitle: !lambda 'return subtitle;'
+                message: !lambda 'return message;'
+                device_name: !lambda 'return std::string(App.get_name());'
+
+  # Only incoming_call removals fire an event; other notification removals are intentionally ignored.
+  on_notification_removed:
+    - if:
+        condition:
+          lambda: 'return category == "incoming_call";'
+        then:
+          - homeassistant.event:
+              event: esphome.ancs_call_ended
+              data:
+                uid: !lambda 'return std::to_string(uid);'
+                device_name: !lambda 'return std::string(App.get_name());'

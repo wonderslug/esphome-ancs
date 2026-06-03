@@ -33,6 +33,7 @@ This is an ESPHome external component that turns an ESP32 into an Apple Notifica
 | [Architecture](docs/architecture.md) | Three-layer design, threading model, BLE lifecycle, key design decisions |
 | [App ID reference](docs/app-id-reference.md) | Master lookup table — app name → bundle ID, category, typical title/message content |
 | [Category reference](docs/categories/README.md) | All ANCS notification categories, trigger variables, event flags, common patterns |
+| [Packages reference](docs/packages.md) | All three packages — what each provides, requirements, minimal configs, and HA event payloads |
 
 **Example configurations** (ready to flash on a WEMOS D1 Mini ESP32):
 
@@ -74,6 +75,16 @@ packages:
 ```
 
 The `ancs-with-sensors` package uses `${friendly_name}` for sensor names — define it as a substitution and all sensors are prefixed automatically.
+
+**With Home Assistant events (fire HA events from every notification):**
+
+```yaml
+packages:
+  ancs_component: github://wonderslug/esphome-ancs/packages/ancs.yaml@master
+  ancs_ha_events: github://wonderslug/esphome-ancs/packages/ancs-ha-events.yaml@master
+```
+
+The `ancs-ha-events` package fires `esphome.ancs_incoming_call`, `esphome.ancs_notification`, and `esphome.ancs_call_ended` events over the native API. Add matching `event` triggers in your HA automations to react without polling sensors. Requires `api:` and `fetch_attributes: [app_id, title, subtitle, message]`. See [docs/packages.md](docs/packages.md) for event payload details and automation examples.
 
 **Pin to a release tag for production (recommended once the repo has releases):**
 
