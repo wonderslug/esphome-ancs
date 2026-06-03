@@ -45,6 +45,7 @@ CONF_FETCH_ATTRIBUTES = "fetch_attributes"
 CONF_MAX_BONDS = "max_bonds"
 CONF_MANUFACTURER = "manufacturer"
 CONF_MODEL = "model"
+CONF_NIMBLE_HOST_TASK_STACK_SIZE = "nimble_host_task_stack_size"
 
 FETCH_ATTRIBUTE_OPTIONS = ["app_id", "title", "subtitle", "message"]
 
@@ -59,6 +60,14 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Optional(CONF_MANUFACTURER, default="ESPHome"): cv.All(cv.string, cv.Length(max=20)),
         cv.Optional(CONF_MODEL, default="ANCS Node"): cv.All(cv.string, cv.Length(max=20)),
         cv.Optional(CONF_MAX_BONDS, default=3): cv.int_range(min=1, max=9),
+        # Stack size (bytes) for the NimBLE host task. LE Secure Connections runs
+        # P-256 ECDH key generation on this task, and all of our GAP/GATT callbacks
+        # (stack buffers + ESPHome logging) run on it too. The ESP-IDF default of
+        # 4096 overflows during the pairing/encryption exchange and reboots the
+        # device with "stack overflow in task nimble_host" (see the connect →
+        # enc_change storm in the crash logs). 8192 gives comfortable headroom;
+        # raise it further only if a custom build still overflows.
+        cv.Optional(CONF_NIMBLE_HOST_TASK_STACK_SIZE, default=8192): cv.int_range(min=4096, max=32768),
         cv.Optional(CONF_ON_CONNECT): automation.validate_automation(
             {cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(ConnectTrigger)}
         ),
@@ -177,6 +186,11 @@ async def to_code(config):
         add_idf_sdkconfig_option(opt, val)
     add_idf_sdkconfig_option("CONFIG_BT_NIMBLE_MAX_BONDS", config[CONF_MAX_BONDS])
     add_idf_sdkconfig_option("CONFIG_BT_NIMBLE_MAX_CCCDS", 8)
+    # Override the NimBLE host task stack (default 4096) to prevent the stack
+    # overflow during LE Secure Connections pairing — see CONF_NIMBLE_HOST_TASK_STACK_SIZE.
+    add_idf_sdkconfig_option(
+        "CONFIG_BT_NIMBLE_HOST_TASK_STACK_SIZE", config[CONF_NIMBLE_HOST_TASK_STACK_SIZE]
+    )
 
 
 _ACTION_SCHEMA = automation.maybe_simple_id({cv.GenerateID(): cv.use_id(AncsComponent)})

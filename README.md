@@ -180,6 +180,7 @@ The hub block configures the BLE ANCS peripheral.  Add one block at the top leve
 | `manufacturer` | string | _(optional)_ | BLE Device Information Service manufacturer string. |
 | `model` | string | _(optional)_ | BLE Device Information Service model string. |
 | `max_bonds` | int (1–9) | `3` | Maximum number of bonded iPhones stored in NVS. Known devices auto-reconnect without re-pairing. |
+| `nimble_host_task_stack_size` | int (4096–32768) | `8192` | Stack size (bytes) for the NimBLE host task. The ESP-IDF default of 4096 overflows during LE Secure Connections pairing and reboots the device (`stack overflow in task nimble_host`); leave at the default unless a custom build still overflows. |
 
 ### Triggers
 
