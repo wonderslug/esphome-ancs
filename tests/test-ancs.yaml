@@ -19,6 +19,7 @@ ancs:
   auto_fetch_attributes: true
   fetch_attributes: [app_id, title, message]
   max_bonds: 3
+  nimble_host_task_stack_size: 8192
   on_notification_added:
     - logger.log:
         format: "ADDED uid=%u cat=%s count=%u"
