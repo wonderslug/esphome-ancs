@@ -8,7 +8,7 @@ from esphome import automation
 from esphome.components.esp32 import add_idf_sdkconfig_option
 from esphome.const import CONF_ID, CONF_NAME, CONF_TRIGGER_ID
 
-CODEOWNERS = ["@brian"]
+CODEOWNERS = ["@wonderslug"]
 DEPENDENCIES = ["esp32"]
 
 ancs_ns = cg.esphome_ns.namespace("ancs")
