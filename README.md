@@ -31,6 +31,7 @@ This is an ESPHome external component that turns an ESP32 into an Apple Notifica
 | [Documentation index](docs/README.md) | Hub linking every doc, example YAML, and category reference |
 | [Pairing guide](docs/pairing.md) | **Why nRF Connect is required**, step-by-step pairing, bond-mismatch recovery, auto-reconnect, troubleshooting |
 | [Architecture](docs/architecture.md) | Three-layer design, threading model, BLE lifecycle, key design decisions |
+| [App ID reference](docs/app-id-reference.md) | Master lookup table — app name → bundle ID, category, typical title/message content |
 | [Category reference](docs/categories/README.md) | All ANCS notification categories, trigger variables, event flags, common patterns |
 
 **Example configurations** (ready to flash on a WEMOS D1 Mini ESP32):

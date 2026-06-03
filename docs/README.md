@@ -20,6 +20,7 @@ Each notification iOS delivers carries a category that determines which apps tri
 
 | Document | Apps / use cases |
 |---|---|
+| [App ID reference](app-id-reference.md) | Master lookup table — app name → bundle ID, category, typical title/message content |
 | [Category overview](categories/README.md) | Full table, available trigger variables, common patterns |
 | [incoming_call](categories/incoming_call.md) | Phone, FaceTime, WhatsApp/Telegram/Signal calls |
 | [missed_call](categories/missed_call.md) | Unanswered call badge |
