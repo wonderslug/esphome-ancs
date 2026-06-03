@@ -9,3 +9,4 @@ tests/.gitignore
 
 # Superpowers planning docs (local only — not part of the published component)
 docs/superpowers/
+localdev/
