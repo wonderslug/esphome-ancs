@@ -188,9 +188,7 @@ async def to_code(config):
     add_idf_sdkconfig_option("CONFIG_BT_NIMBLE_MAX_CCCDS", 8)
     # Override the NimBLE host task stack (default 4096) to prevent the stack
     # overflow during LE Secure Connections pairing — see CONF_NIMBLE_HOST_TASK_STACK_SIZE.
-    add_idf_sdkconfig_option(
-        "CONFIG_BT_NIMBLE_HOST_TASK_STACK_SIZE", config[CONF_NIMBLE_HOST_TASK_STACK_SIZE]
-    )
+    add_idf_sdkconfig_option("CONFIG_BT_NIMBLE_HOST_TASK_STACK_SIZE", config[CONF_NIMBLE_HOST_TASK_STACK_SIZE])
 
 
 _ACTION_SCHEMA = automation.maybe_simple_id({cv.GenerateID(): cv.use_id(AncsComponent)})
