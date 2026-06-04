@@ -78,6 +78,7 @@ static inline const ble_uuid_t *u128p(ble_uuid128_t *u) {
 
 struct ConnState {
   bool     active{false};
+  bool     ancs_ready{false};   // true once CONNECTED event has been pushed
   uint16_t conn_handle{BLE_HS_CONN_HANDLE_NONE};
   uint16_t ns_handle{0};
   uint16_t cp_handle{0};
@@ -340,6 +341,7 @@ static int read_device_name_cb(uint16_t conn_handle, const struct ble_gatt_error
   }
 
   // BLE_HS_EDONE or error — emit CONNECTED with whatever name we have.
+  slot->ancs_ready = true;
   BleEvent ev{};
   ev.type = BleEventType::CONNECTED;
   ev.device_name = (slot->peer_name_buf[0] != '\0') ? slot->peer_name_buf : "iPhone";
@@ -400,11 +402,13 @@ static int gap_event_cb(struct ble_gap_event *event, void *arg) {
       uint16_t dc_handle = event->disconnect.conn.conn_handle;
       ESP_LOGI(TAG, "disconnected handle=%u reason=%d", dc_handle, event->disconnect.reason);
       ConnState *slot = find_slot(dc_handle);
-      BleEvent ev{};
-      ev.type = BleEventType::DISCONNECTED;
-      ev.device_name = slot ? slot->peer_name_buf : "";
+      if (slot && slot->ancs_ready) {
+        BleEvent ev{};
+        ev.type = BleEventType::DISCONNECTED;
+        ev.device_name = slot->peer_name_buf;
+        push_event(ev);
+      }
       free_slot(dc_handle);
-      push_event(ev);
       start_advertising();
       return 0;
     }
@@ -527,6 +531,7 @@ static int on_disc_chr(uint16_t conn_handle, const struct ble_gatt_error *error,
     int rc = ble_gattc_read_by_uuid(conn_handle, 1, 0xFFFF, u16p(&s_uuid_device_name), read_device_name_cb, nullptr);
     if (rc != 0) {
       ESP_LOGW(TAG, "device name read failed rc=%d", rc);
+      slot->ancs_ready = true;
       BleEvent ev{};
       ev.type = BleEventType::CONNECTED;
       ev.device_name = "iPhone";
@@ -676,6 +681,9 @@ static void handle_data_source(const uint8_t *buf, uint16_t len, ConnState *slot
 // start_advertising
 // ---------------------------------------------------------------------------
 static void start_advertising() {
+  if (ble_gap_adv_active())
+    return;  // already advertising — nothing to do
+
   struct ble_gap_adv_params adv_params = {0};
   adv_params.conn_mode = BLE_GAP_CONN_MODE_UND;
   adv_params.disc_mode = BLE_GAP_DISC_MODE_GEN;
