@@ -1,20 +1,21 @@
 # ESPHome ANCS Component — package with sensors
 #
-# Includes the component AND pre-wires the binary_sensor, text_sensor, and
+# Standalone package — includes the component AND pre-wires the binary_sensor, text_sensor, and
 # button platforms. Requires your config to define:
-#   - id: my_ancs       on the ancs: block
-#   - api: or mqtt:     to surface sensors in Home Assistant
+#   - substitutions.friendly_name  — used as entity name prefix in Home Assistant
+#   - api: or mqtt:                — to surface sensors in Home Assistant
 #
 # Usage:
 #   packages:
-#     ancs_component: github://wonderslug/esphome-ancs/packages/ancs-with-sensors.yaml@master
+#     ancs_sensors: github://wonderslug/esphome-ancs/packages/ancs-with-sensors.yaml@master
 #
-# Then add your ancs: block:
-#   ancs:
-#     id: my_ancs
-#     name: "My ANCS"
-#     on_notification_added:
-#       ...
+# Override the BLE pairing name (shown in nRF Connect when pairing):
+#   substitutions:
+#     friendly_name: "Living Room"
+#     ancs_name: "Living Room ANCS"   # optional, defaults to "ANCS HA Bridge"
+
+substitutions:
+  ancs_name: "ANCS HA Bridge"
 
 external_components:
   - source:
@@ -22,6 +23,10 @@ external_components:
       url: https://github.com/wonderslug/esphome-ancs
       ref: master
     components: [ancs]
+
+ancs:
+  id: my_ancs
+  name: "${ancs_name}"
 
 binary_sensor:
   - platform: ancs
