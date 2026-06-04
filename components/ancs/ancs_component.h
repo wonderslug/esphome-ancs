@@ -65,6 +65,7 @@ class AncsComponent : public Component {
   void clear_bonds() { ble_.clear_bonds_and_restart(); }
   void disconnect() { ble_.disconnect(); }
   void request_attributes(uint32_t uid) { ble_.request_attributes(uid); }
+  const std::string &get_connected_device_name() const { return connected_device_name_; }
 
  protected:
   AncsBle ble_;
@@ -75,6 +76,7 @@ class AncsComponent : public Component {
   uint8_t max_bonds_{3};
   std::vector<protocol::AttributeId> fetch_attrs_;
   bool call_active_{false};
+  std::string connected_device_name_;
 
 #ifdef USE_BINARY_SENSOR
   binary_sensor::BinarySensor *connected_bs_{nullptr};
