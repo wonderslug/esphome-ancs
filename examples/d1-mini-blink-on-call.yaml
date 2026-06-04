@@ -42,8 +42,8 @@ ancs:
           lambda: 'return category == "incoming_call";'
         then:
           - logger.log:
-              format: "Incoming call from: %s"
-              args: [title.c_str()]
+              format: "Incoming call from: %s  dev=%s"
+              args: [title.c_str(), device_name.c_str()]
 
 # ─── LED (GPIO2 = onboard LED, active-high on D1 Mini ESP32) ─────────────────
 output:

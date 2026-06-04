@@ -64,8 +64,8 @@ ancs:
   name: "My ANCS"
   on_notification_added:
     - logger.log:
-        format: "Notification: category=%s uid=%d"
-        args: [category.c_str(), uid]
+        format: "Notification: dev=%s category=%s uid=%d"
+        args: [device_name.c_str(), category.c_str(), uid]
 ```
 
 ---

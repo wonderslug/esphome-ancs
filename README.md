@@ -205,12 +205,12 @@ All triggers are defined inside the `ancs:` hub block.
 
 | Trigger | Variables | Notes |
 |---------|-----------|-------|
-| `on_connect` | _(none)_ | Fires when an iPhone establishes an encrypted ANCS connection. |
-| `on_disconnect` | _(none)_ | Fires when the connection drops. |
-| `on_notification_added` | `uid` (uint32), `category` (std::string), `category_count` (uint8), `flags` (uint8) | Fires immediately when a notification appears — before attribute text is fetched. Use this to react fast (e.g., start blinking on `category == "incoming_call"`). |
-| `on_notification_attributes` | `uid`, `category`, `app_id`, `title`, `subtitle`, `message` (all std::string) | Fires after a GATT round-trip once the requested attribute text has arrived. Use this to display caller name, message body, etc. |
-| `on_notification_removed` | `uid` (uint32), `category` (std::string) | Fires when the notification is dismissed or acknowledged on the iPhone. |
-| `on_notification_modified` | `uid` (uint32), `category` (std::string), `flags` (uint8) | Fires when an existing notification is updated (e.g., call accepted on another device). |
+| `on_connect` | `device_name` (std::string) | Fires when an iPhone establishes an encrypted ANCS connection. `device_name` is the BLE display name of the phone. |
+| `on_disconnect` | `device_name` (std::string) | Fires when the connection drops. |
+| `on_notification_added` | `uid` (uint32), `category` (std::string), `category_count` (uint8), `flags` (uint8), `device_name` (std::string) | Fires immediately when a notification appears — before attribute text is fetched. Use this to react fast (e.g., start blinking on `category == "incoming_call"`). |
+| `on_notification_attributes` | `uid`, `category`, `app_id`, `title`, `subtitle`, `message`, `device_name` (all std::string) | Fires after a GATT round-trip once the requested attribute text has arrived. Use this to display caller name, message body, etc. |
+| `on_notification_removed` | `uid` (uint32), `category` (std::string), `device_name` (std::string) | Fires when the notification is dismissed or acknowledged on the iPhone. |
+| `on_notification_modified` | `uid` (uint32), `category` (std::string), `flags` (uint8), `device_name` (std::string) | Fires when an existing notification is updated (e.g., call accepted on another device). |
 
 **Added vs. Attributes split**: `on_notification_added` carries only the notification header and fires the moment the notification arrives — ideal for low-latency reactions like starting a light flash. `on_notification_attributes` carries caller/title/message text but requires one GATT round-trip, so it arrives a fraction of a second later.
 
@@ -289,8 +289,8 @@ ancs:
   max_bonds: 3
   on_notification_added:
     - logger.log:
-        format: "ADDED uid=%u cat=%s count=%u"
-        args: [uid, category.c_str(), category_count]
+        format: "ADDED uid=%u dev=%s cat=%s count=%u"
+        args: [uid, device_name.c_str(), category.c_str(), category_count]
     - if:
         condition:
           lambda: 'return category == "incoming_call";'
@@ -300,21 +300,25 @@ ancs:
               flash_length: 60s
   on_notification_attributes:
     - logger.log:
-        format: "ATTRS uid=%u title=%s msg=%s"
-        args: [uid, title.c_str(), message.c_str()]
+        format: "ATTRS uid=%u dev=%s title=%s msg=%s"
+        args: [uid, device_name.c_str(), title.c_str(), message.c_str()]
   on_notification_removed:
     - logger.log:
-        format: "REMOVED uid=%u cat=%s"
-        args: [uid, category.c_str()]
+        format: "REMOVED uid=%u dev=%s cat=%s"
+        args: [uid, device_name.c_str(), category.c_str()]
     - if:
         condition:
           lambda: 'return category == "incoming_call";'
         then:
           - light.turn_off: alert_light
   on_connect:
-    - logger.log: "iPhone connected"
+    - logger.log:
+        format: "iPhone connected: %s"
+        args: [device_name.c_str()]
   on_disconnect:
-    - logger.log: "iPhone disconnected"
+    - logger.log:
+        format: "iPhone disconnected: %s"
+        args: [device_name.c_str()]
 
 output:
   - platform: gpio

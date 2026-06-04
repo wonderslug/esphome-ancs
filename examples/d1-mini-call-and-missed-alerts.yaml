@@ -27,7 +27,9 @@ ancs:
         condition:
           lambda: 'return category == "incoming_call";'
         then:
-          - logger.log: "Incoming call"
+          - logger.log:
+              format: "Incoming call  dev=%s"
+              args: [device_name.c_str()]
           - script.execute: alert_ringing
 
     # Missed call — slow breathe for ~9 s then fade out.
@@ -35,7 +37,9 @@ ancs:
         condition:
           lambda: 'return category == "missed_call";'
         then:
-          - logger.log: "Missed call"
+          - logger.log:
+              format: "Missed call  dev=%s"
+              args: [device_name.c_str()]
           - script.execute: alert_breathe
 
     # Voicemail — same slow breathe as missed call.
@@ -43,7 +47,9 @@ ancs:
         condition:
           lambda: 'return category == "voicemail";'
         then:
-          - logger.log: "Voicemail"
+          - logger.log:
+              format: "Voicemail  dev=%s"
+              args: [device_name.c_str()]
           - script.execute: alert_breathe
 
   on_notification_removed:
@@ -56,9 +62,13 @@ ancs:
           - light.turn_off: onboard_led
 
   on_connect:
-    - logger.log: "iPhone connected"
+    - logger.log:
+        format: "iPhone connected: %s"
+        args: [device_name.c_str()]
   on_disconnect:
-    - logger.log: "iPhone disconnected"
+    - logger.log:
+        format: "iPhone disconnected: %s"
+        args: [device_name.c_str()]
     - script.stop: alert_ringing
     - script.stop: alert_breathe
     - light.turn_off: onboard_led

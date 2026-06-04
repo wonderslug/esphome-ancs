@@ -38,14 +38,18 @@ ancs:
           lambda: 'return app_id == "com.apple.MobileSMS";'
         then:
           - logger.log:
-              format: "iMessage from: %s — %s"
-              args: [title.c_str(), message.c_str()]
+              format: "iMessage from: %s — %s  dev=%s"
+              args: [title.c_str(), message.c_str(), device_name.c_str()]
           - script.execute: blink_message
 
   on_connect:
-    - logger.log: "iPhone connected"
+    - logger.log:
+        format: "iPhone connected: %s"
+        args: [device_name.c_str()]
   on_disconnect:
-    - logger.log: "iPhone disconnected"
+    - logger.log:
+        format: "iPhone disconnected: %s"
+        args: [device_name.c_str()]
     - script.stop: blink_message
     - light.turn_off: onboard_led
 
