@@ -106,16 +106,20 @@ on both sides as long as neither side deliberately deletes it.
 5. **The iOS pairing dialog appears** — a system prompt reading something like:
    *"ESPHome-ANCS" Would Like to Pair With Your iPhone*. Tap **Pair**.
 
-6. nRF Connect will display the GATT service discovery results. After a few
+6. **A second iOS dialog appears** — *Allow "ESPHome-ANCS" to Receive Your iPhone
+   Notifications?* Tap **Allow**. This grants the ANCS permission; without it the
+   component connects but receives no notifications.
+
+7. nRF Connect will display the GATT service discovery results. After a few
    seconds you will see the ANCS service (`7905F431-B5CE-4E99-A40F-4B1E122D00D0`)
    and its three characteristics appear in the list. This confirms the bond was
    accepted and ANCS discovery succeeded.
 
-7. **Close nRF Connect.** You do not need to keep it open. The bond is stored
+8. **Close nRF Connect.** You do not need to keep it open. The bond is stored
    at the iOS system level and the ANCS connection persists (or will
    auto-reconnect if nRF Connect dropped it when closed).
 
-8. Check the ESP32 serial log. You should see:
+9. Check the ESP32 serial log. You should see:
    ```
    [I][ancs.ble]: encrypted — starting ANCS service discovery
    [I][ancs.ble]: ANCS chars done: ns=XX cp=XX ds=XX

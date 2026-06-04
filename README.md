@@ -146,10 +146,11 @@ device is in range with no further use of nRF Connect required.
 3. Open nRF Connect → **SCANNER** tab → tap **SCAN**.
 4. Find your device by the BLE name you set (e.g. `ESPHome-ANCS`) and tap **CONNECT**.
 5. The ESP32 receives the connection and immediately requests pairing. iOS shows a system dialog: **"ESPHome-ANCS" Would Like to Pair With Your iPhone** → tap **Pair**.
-6. nRF Connect shows the GATT services being discovered. You will see the ANCS service appear (`7905F431-…`).
-7. Close nRF Connect. The bond is now stored at the iOS system level.
-8. The ESP32 logs show `ANCS chars done` and `iPhone connected`. ESPHome sensors reflect the connected state.
-9. From this point on iOS reconnects automatically — nRF Connect is no longer needed unless you need to re-pair.
+6. iOS shows a second dialog: **Allow "ESPHome-ANCS" to Receive Your iPhone Notifications?** → tap **Allow**. This grants ANCS access.
+7. nRF Connect shows the GATT services being discovered. You will see the ANCS service appear (`7905F431-…`).
+8. Close nRF Connect. The bond is now stored at the iOS system level.
+9. The ESP32 logs show `ANCS chars done` and `iPhone connected`. ESPHome sensors reflect the connected state.
+10. From this point on iOS reconnects automatically — nRF Connect is no longer needed unless you need to re-pair.
 
 ### Re-pairing after "Forget This Device"
 

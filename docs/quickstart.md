@@ -56,8 +56,9 @@ That's the entire config. The package handles the component, the ANCS configurat
 3. On your iPhone, open **nRF Connect** → **SCANNER** tab → tap **SCAN**.
 4. Find `ANCS HA Bridge` in the list and tap **CONNECT**.
 5. iOS shows a system dialog: **"ANCS HA Bridge" Would Like to Pair** → tap **Pair**.
-6. Close nRF Connect. The bond is stored at the iOS system level.
-7. The ESP32 log shows `ANCS chars done` and `iPhone connected`. You're paired.
+6. iOS shows a second dialog: **Allow "ANCS HA Bridge" to Receive Your iPhone Notifications?** → tap **Allow**. This is what grants ANCS access.
+7. Close nRF Connect. The bond is stored at the iOS system level.
+8. The ESP32 log shows `ANCS chars done` and `iPhone connected`. You're paired.
 
 From this point iOS reconnects automatically whenever the ESP32 is powered on and in range — nRF Connect is only needed for the first pairing.
 
