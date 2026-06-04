@@ -10,10 +10,17 @@
 # Pin to a release tag for production (recommended):
 #   packages:
 #     ancs_component: github://wonderslug/esphome-ancs/packages/ancs.yaml@v1.0.0
+#
+# Override the component ref (useful for development or feature branches):
+#   substitutions:
+#     ancs_ref: "feat/my-branch"
+
+substitutions:
+  ancs_ref: "master"
 
 external_components:
   - source:
       type: git
       url: https://github.com/wonderslug/esphome-ancs
-      ref: master
+      ref: "${ancs_ref}"
     components: [ancs]

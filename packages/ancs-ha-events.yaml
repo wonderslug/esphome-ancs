@@ -7,11 +7,9 @@
 #                                 title, subtitle, message, device_name, iphone_name
 #   esphome.ancs_call_ended     — call declined or answered; payload: uid, device_name, iphone_name
 #
+# Standalone package — no other packages required. Include it and add your connectivity config.
+#
 # Requirements:
-#   - ancs: block in your main config with:
-#       id: my_ancs
-#       auto_fetch_attributes: true
-#       fetch_attributes: [app_id, title, subtitle, message]  # title = caller name for incoming calls
 #   - api: configured in your main config (events travel over the ESPHome API)
 #
 # Usage (GitHub — recommended):
@@ -25,8 +23,31 @@
 # Local development:
 #   packages:
 #     ancs_ha_events: !include packages/ancs-ha-events.yaml
+#
+# Override the BLE pairing name (shown in nRF Connect when pairing):
+#   substitutions:
+#     ancs_name: "My iPhone Bridge"
+#
+# Override the component ref (useful for development or feature branches):
+#   substitutions:
+#     ancs_ref: "feat/my-branch"
+
+substitutions:
+  ancs_name: "ANCS HA Bridge"
+  ancs_ref: "master"
+
+external_components:
+  - source:
+      type: git
+      url: https://github.com/wonderslug/esphome-ancs
+      ref: "${ancs_ref}"
+    components: [ancs]
 
 ancs:
+  id: my_ancs
+  name: "${ancs_name}"
+  auto_fetch_attributes: true
+  fetch_attributes: [app_id, title, subtitle, message]
   on_notification_attributes:
     - logger.log:
         format: "ATTRS     uid=%u  cat=%-16s  app=%s  title=%s  sub=%s  msg=%s"

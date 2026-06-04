@@ -55,14 +55,18 @@ This is an ESPHome external component that turns an ESP32 into an Apple Notifica
 
 ### Via ESPHome packages (recommended)
 
-The simplest way to use the component in any project. Add one line to your YAML — ESPHome fetches the component automatically at compile time.
+The simplest way to use the component in any project. ESPHome fetches the component automatically at compile time.
 
-**Minimal (component code only — you configure everything):**
+> New here? The **[quick start guide](docs/quickstart.md)** gets you from zero to HA automations in under 10 minutes.
+
+**Home Assistant events (quickest path — fires HA events from every notification):**
 
 ```yaml
 packages:
-  ancs_component: github://wonderslug/esphome-ancs/packages/ancs.yaml@master
+  ancs_ha_events: github://wonderslug/esphome-ancs/packages/ancs-ha-events.yaml@master
 ```
+
+One package. Add your `esphome:`, ESP32, `wifi:`, `api:`, and `ota:` blocks — nothing else required. See the [quick start guide](docs/quickstart.md) for a copy-paste config and your first HA automation.
 
 **With sensors pre-wired (binary + text sensors appear in Home Assistant automatically):**
 
@@ -71,26 +75,25 @@ substitutions:
   friendly_name: "Living Room"
 
 packages:
-  ancs_component: github://wonderslug/esphome-ancs/packages/ancs-with-sensors.yaml@master
+  ancs_sensors: github://wonderslug/esphome-ancs/packages/ancs-with-sensors.yaml@master
 ```
 
-The `ancs-with-sensors` package uses `${friendly_name}` for sensor names — define it as a substitution and all sensors are prefixed automatically.
+The `ancs-with-sensors` package uses `${friendly_name}` for sensor names — define it as a substitution and all sensors are prefixed automatically. No `ancs:` block needed.
 
-**With Home Assistant events (fire HA events from every notification):**
+**Minimal / custom (component code only — you configure everything):**
 
 ```yaml
 packages:
   ancs_component: github://wonderslug/esphome-ancs/packages/ancs.yaml@master
-  ancs_ha_events: github://wonderslug/esphome-ancs/packages/ancs-ha-events.yaml@master
 ```
 
-The `ancs-ha-events` package fires `esphome.ancs_incoming_call`, `esphome.ancs_notification`, and `esphome.ancs_call_ended` events over the native API. Add matching `event` triggers in your HA automations to react without polling sensors. Requires `api:` and `fetch_attributes: [app_id, title, subtitle, message]`. See [docs/packages.md](docs/packages.md) for event payload details and automation examples.
+Use this when you want full control over every sensor, trigger, and action in your own YAML — device-level automations, custom logic, anything beyond what the other packages provide.
 
 **Pin to a release tag for production (recommended once the repo has releases):**
 
 ```yaml
 packages:
-  ancs_component: github://wonderslug/esphome-ancs/packages/ancs.yaml@v1.0.0
+  ancs_ha_events: github://wonderslug/esphome-ancs/packages/ancs-ha-events.yaml@v1.0.0
 ```
 
 ---
@@ -143,10 +146,11 @@ device is in range with no further use of nRF Connect required.
 3. Open nRF Connect → **SCANNER** tab → tap **SCAN**.
 4. Find your device by the BLE name you set (e.g. `ESPHome-ANCS`) and tap **CONNECT**.
 5. The ESP32 receives the connection and immediately requests pairing. iOS shows a system dialog: **"ESPHome-ANCS" Would Like to Pair With Your iPhone** → tap **Pair**.
-6. nRF Connect shows the GATT services being discovered. You will see the ANCS service appear (`7905F431-…`).
-7. Close nRF Connect. The bond is now stored at the iOS system level.
-8. The ESP32 logs show `ANCS chars done` and `iPhone connected`. ESPHome sensors reflect the connected state.
-9. From this point on iOS reconnects automatically — nRF Connect is no longer needed unless you need to re-pair.
+6. iOS shows a second dialog: **Allow "ESPHome-ANCS" to Receive Your iPhone Notifications?** → tap **Allow**. This grants ANCS access.
+7. nRF Connect shows the GATT services being discovered. You will see the ANCS service appear (`7905F431-…`).
+8. Close nRF Connect. The bond is now stored at the iOS system level.
+9. The ESP32 logs show `ANCS chars done` and `iPhone connected`. ESPHome sensors reflect the connected state.
+10. From this point on iOS reconnects automatically — nRF Connect is no longer needed unless you need to re-pair.
 
 ### Re-pairing after "Forget This Device"
 

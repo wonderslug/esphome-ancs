@@ -12,8 +12,8 @@ notifications with minimal boilerplate, or compose them together for a richer se
 | Package | What it provides | Requires |
 |---|---|---|
 | `ancs.yaml` | `external_components` declaration only — the component code itself | Nothing beyond the `packages:` include |
-| `ancs-with-sensors.yaml` | Component code + `binary_sensor`, `text_sensor`, and `button` platforms pre-wired for HA | `substitutions.friendly_name`, `id: my_ancs` on your `ancs:` block, `api:` or `mqtt:` |
-| `ancs-ha-events.yaml` | `on_notification_attributes` and `on_notification_removed` triggers that fire three HA events | `id: my_ancs`, `auto_fetch_attributes: true`, `fetch_attributes: [app_id, title, subtitle, message]`, `api:` |
+| `ancs-with-sensors.yaml` | Component code + `binary_sensor`, `text_sensor`, and `button` platforms pre-wired for HA | `substitutions.friendly_name`, `api:` or `mqtt:` |
+| `ancs-ha-events.yaml` | Everything needed to fire three HA events from iPhone notifications — component, ANCS config, and event triggers | `api:` |
 
 Packages can be stacked. For example, you can include both `ancs-with-sensors.yaml`
 and `ancs-ha-events.yaml` in the same device config to get both the HA entity sensors
@@ -81,7 +81,7 @@ or inherit from `ancs.yaml`:
 - **Binary sensors** — `connected` (HA entity: **"[friendly_name] iPhone Connected"**)
   and `call_active` (HA entity: **"[friendly_name] Call Active"**).
 - **Text sensors:**
-  - `connected_device` → HA entity **"[friendly_name] Connected Device"** — name of the
+  - `connected_device` → HA entity **"[friendly_name] Connected iPhone"** — name of the
     paired iPhone.
   - `last_title` → HA entity **"[friendly_name] Last Notification"** — the notification
     title (not "Last Title"; the friendly label is "Last Notification").
@@ -107,10 +107,11 @@ custom triggers.
 
 ### What it requires
 
-- `substitutions.friendly_name` — a string used as the entity name prefix.
-- `id: my_ancs` — you must set this on your `ancs:` block exactly as written;
-  the package references it by this ID.
+- `substitutions.friendly_name` — a string used as the entity name prefix for all HA entities.
 - `api:` or `mqtt:` — to surface the sensors in Home Assistant.
+
+**Optional substitution:**
+- `ancs_name` (default: `"ANCS HA Bridge"`) — the BLE name shown in nRF Connect during pairing. Override it in your own `substitutions:` block if you want a custom pairing name.
 
 ### Minimal working config
 
@@ -125,21 +126,23 @@ esp32:
 
 substitutions:
   friendly_name: "Living Room"
+  # ancs_name: "Living Room ANCS"   # optional — overrides BLE pairing name
 
 api:
 ota:
   - platform: esphome
 
-packages:
-  ancs_component: github://wonderslug/esphome-ancs/packages/ancs-with-sensors.yaml@master
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
 
-ancs:
-  id: my_ancs
-  name: "Living Room ANCS"
+packages:
+  ancs_sensors: github://wonderslug/esphome-ancs/packages/ancs-with-sensors.yaml@master
 ```
 
 This produces HA entities named `Living Room iPhone Connected`, `Living Room Call Active`,
-`Living Room Last Notification`, and so on.
+`Living Room Last Notification`, and so on. No `ancs:` block is needed — the package
+provides the base configuration.
 
 ---
 
@@ -165,14 +168,14 @@ other devices, and more complex conditions.
 
 ### What it requires
 
-You must define these in your own config:
-
-- `id: my_ancs` on your `ancs:` block.
-- `auto_fetch_attributes: true` on your `ancs:` block.
-- `fetch_attributes: [app_id, title, subtitle, message]` on your `ancs:` block —
-  the package reads these fields to build event payloads.
 - `api:` — events travel over the ESPHome native API. The device must be connected
   to Home Assistant.
+
+The package provides everything else: the component code, the `ancs:` base configuration
+(`id`, `auto_fetch_attributes`, `fetch_attributes`), and the event trigger wiring.
+
+**Optional substitution:**
+- `ancs_name` (default: `"ANCS HA Bridge"`) — the BLE name shown in nRF Connect during pairing. Override it in your own `substitutions:` block if you want a custom pairing name.
 
 ### Why `on_notification_attributes` instead of `on_notification_added`
 
@@ -238,19 +241,23 @@ esp32:
   framework:
     type: esp-idf
 
+# substitutions:
+#   ancs_name: "My iPhone Bridge"   # optional — overrides BLE pairing name
+
 api:
 ota:
   - platform: esphome
 
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
 packages:
   ancs_ha_events: github://wonderslug/esphome-ancs/packages/ancs-ha-events.yaml@master
-
-ancs:
-  id: my_ancs
-  name: "ANCS HA Bridge"
-  auto_fetch_attributes: true
-  fetch_attributes: [app_id, title, subtitle, message]
 ```
+
+No `ancs:` block is needed — the package provides the base configuration. The only required
+setting in your own config is `api:`.
 
 ### Home Assistant automation examples
 
@@ -345,7 +352,8 @@ action:
 ## Combining packages: `ancs-with-sensors.yaml` + `ancs-ha-events.yaml`
 
 You can include both packages in the same config to get HA entity sensors and the
-event stream simultaneously.
+event stream simultaneously. Both packages are self-contained, so no manual `ancs:`
+block is needed.
 
 ```yaml
 esphome:
@@ -358,27 +366,26 @@ esp32:
 
 substitutions:
   friendly_name: "Living Room"
+  # ancs_name: "Living Room ANCS"   # optional — overrides BLE pairing name
 
 api:
 ota:
   - platform: esphome
 
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
 packages:
   ancs_sensors:    github://wonderslug/esphome-ancs/packages/ancs-with-sensors.yaml@master
   ancs_ha_events:  github://wonderslug/esphome-ancs/packages/ancs-ha-events.yaml@master
-
-ancs:
-  id: my_ancs
-  name: "Living Room ANCS"
-  auto_fetch_attributes: true
-  fetch_attributes: [app_id, title, subtitle, message]
 ```
 
-`ancs-with-sensors.yaml` already declares `external_components`, so you do not
-also need `ancs.yaml` — the sensors package is a superset of it.
+Both packages define `ancs: id: my_ancs` — ESPHome deep-merges these into one block,
+so there is no conflict. Both packages also define `substitutions: ancs_name: "ANCS HA Bridge"`;
+since the key and value are identical, there is no conflict there either. Override `ancs_name`
+once in your own `substitutions:` block and both packages pick it up.
 
-Both packages reference `id: my_ancs`, so the single `ancs:` block satisfies both.
-The `fetch_attributes` list must include all four attributes (`app_id`, `title`,
-`subtitle`, `message`) because `ancs-ha-events.yaml` requires them for event payloads.
-`ancs-with-sensors.yaml` does not care about `fetch_attributes` — its text sensors
-are updated on every notification regardless.
+`ancs-with-sensors.yaml` does not require `fetch_attributes` — its text sensors are updated
+on every notification regardless. `ancs-ha-events.yaml` sets `fetch_attributes` internally,
+so you do not need to specify it.
