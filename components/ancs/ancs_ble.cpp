@@ -157,17 +157,22 @@ static void register_uid_route(uint32_t uid, uint16_t conn_handle) {
   s_uid_route_idx = (s_uid_route_idx + 1) % k_uid_route_size;
 }
 
-static uint16_t lookup_uid_route(uint32_t uid) {
-  // Scan backwards (most-recently-added first) to find freshest mapping.
-  // Known limitation: if two phones assign the same UID to different notifications,
-  // the most-recently-registered phone wins. Manual request_attributes(uid) calls
-  // may target the wrong phone in this case. Auto-fetch is unaffected (it uses
-  // slot->conn_handle directly). This is accepted scope for the experimental branch.
+// Scan backwards (most-recently-added first). If peer_name is non-null and
+// non-empty, only entries whose slot's peer name matches are considered —
+// this resolves UID collisions when two phones independently assign the same
+// sequential UID to different notifications.
+static uint16_t lookup_uid_route(uint32_t uid, const char *peer_name = nullptr) {
   for (uint16_t i = 0; i < k_uid_route_size; i++) {
     uint16_t idx = (s_uid_route_idx + k_uid_route_size - 1 - i) % k_uid_route_size;
-    if (s_uid_routes[idx].conn_handle != BLE_HS_CONN_HANDLE_NONE &&
-        s_uid_routes[idx].uid == uid)
-      return s_uid_routes[idx].conn_handle;
+    const UidRoute &r = s_uid_routes[idx];
+    if (r.conn_handle == BLE_HS_CONN_HANDLE_NONE || r.uid != uid)
+      continue;
+    if (peer_name && peer_name[0] != '\0') {
+      ConnState *slot = find_slot(r.conn_handle);
+      if (!slot || strncmp(slot->peer_name_buf, peer_name, sizeof(slot->peer_name_buf) - 1) != 0)
+        continue;
+    }
+    return r.conn_handle;
   }
   return BLE_HS_CONN_HANDLE_NONE;
 }
@@ -850,8 +855,9 @@ bool AncsBle::pop_event(BleEvent &out) {
 // Action methods
 // ---------------------------------------------------------------------------
 
-void AncsBle::request_attributes(uint32_t uid) {
-  uint16_t conn_handle = lookup_uid_route(uid);
+void AncsBle::request_attributes(uint32_t uid, const std::string &device_name) {
+  const char *peer = device_name.empty() ? nullptr : device_name.c_str();
+  uint16_t conn_handle = lookup_uid_route(uid, peer);
   if (conn_handle == BLE_HS_CONN_HANDLE_NONE) {
     ESP_LOGW(TAG, "request_attributes: no route for uid=%u", uid);
     return;

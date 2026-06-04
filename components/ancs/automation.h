@@ -92,7 +92,10 @@ class RequestAttributesAction : public Action<Ts...> {
  public:
   explicit RequestAttributesAction(AncsComponent *p) : parent_(p) {}
   TEMPLATABLE_VALUE(uint32_t, uid)
-  void play(Ts... x) override { parent_->request_attributes(this->uid_.value(x...)); }
+  TEMPLATABLE_VALUE(std::string, device_name)
+  void play(Ts... x) override {
+    parent_->request_attributes(this->uid_.value(x...), this->device_name_.value(x...));
+  }
 
  protected:
   AncsComponent *parent_;

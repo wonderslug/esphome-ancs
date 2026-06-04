@@ -224,6 +224,7 @@ async def disconnect_to_code(config, action_id, template_arg, args):
         {
             cv.GenerateID(): cv.use_id(AncsComponent),
             cv.Required("uid"): cv.templatable(cv.uint32_t),
+            cv.Optional("device_name"): cv.templatable(cv.string),
         }
     ),
     synchronous=True,
@@ -233,4 +234,7 @@ async def request_attributes_to_code(config, action_id, template_arg, args):
     var = cg.new_Pvariable(action_id, template_arg, parent)
     template_ = await cg.templatable(config["uid"], args, cg.uint32)
     cg.add(var.set_uid(template_))
+    if "device_name" in config:
+        template_ = await cg.templatable(config["device_name"], args, cg.std_string)
+        cg.add(var.set_device_name(template_))
     return var

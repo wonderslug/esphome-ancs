@@ -68,7 +68,9 @@ class AncsComponent : public Component {
 
   void clear_bonds() { ble_.clear_bonds_and_restart(); }
   void disconnect() { ble_.disconnect(); }
-  void request_attributes(uint32_t uid) { ble_.request_attributes(uid); }
+  void request_attributes(uint32_t uid, const std::string &device_name = "") {
+    ble_.request_attributes(uid, device_name);
+  }
   const std::string &get_connected_device_name() const { return connected_device_name_; }
 
  protected:
