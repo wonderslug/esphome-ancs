@@ -152,7 +152,11 @@ async def to_code(config):
         )
     for conf in config.get(CONF_ON_NOTIFICATION_REMOVED, []):
         trig = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
-        await automation.build_automation(trig, [(cg.uint32, "uid"), (cg.std_string, "category"), (cg.std_string, "device_name")], conf)
+        await automation.build_automation(
+            trig,
+            [(cg.uint32, "uid"), (cg.std_string, "category"), (cg.std_string, "device_name")],
+            conf,
+        )
     for conf in config.get(CONF_ON_NOTIFICATION_ATTRIBUTES, []):
         trig = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
         await automation.build_automation(
