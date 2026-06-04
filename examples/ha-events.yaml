@@ -45,7 +45,7 @@
 #     - service: tts.cloud_say
 #       data:
 #         entity_id: media_player.YOUR_SPEAKER
-#         message: "Incoming call from {{ trigger.event.data.caller }}"
+#         message: "Incoming call from {{ trigger.event.data.caller }} on {{ trigger.event.data.iphone_name }}"
 #
 # 4. React to a specific app notification (filter by app_id):
 #

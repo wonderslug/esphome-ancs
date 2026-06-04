@@ -152,9 +152,9 @@ three HA events over the ESPHome native API:
 
 | Event | When it fires | Payload fields |
 |---|---|---|
-| `esphome.ancs_incoming_call` | An incoming call notification has its attributes available | `uid`, `caller`, `app_id`, `device_name` |
-| `esphome.ancs_notification` | Any non-call notification has its attributes available | `uid`, `category`, `app_id`, `title`, `subtitle`, `message`, `device_name` |
-| `esphome.ancs_call_ended` | An incoming call is declined or answered | `uid`, `device_name` |
+| `esphome.ancs_incoming_call` | An incoming call notification has its attributes available | `uid`, `caller`, `app_id`, `device_name`, `iphone_name` |
+| `esphome.ancs_notification` | Any non-call notification has its attributes available | `uid`, `category`, `app_id`, `title`, `subtitle`, `message`, `device_name`, `iphone_name` |
+| `esphome.ancs_call_ended` | An incoming call is declined or answered | `uid`, `device_name`, `iphone_name` |
 
 ### When to use it
 
@@ -200,6 +200,19 @@ config (retrieved via `App.get_name()`). If you have more than one ANCS device
 paired to Home Assistant, every event from every device arrives under the same
 event type names. Use `trigger.event.data.device_name` in your HA automation
 condition to target events from a specific device.
+
+### `iphone_name` field
+
+`iphone_name` contains the display name of the connected iPhone as iOS advertises
+it over Bluetooth — typically something like "Brian's iPhone" or "iPhone". It is
+the same name shown in iOS Settings → General → About → Name.
+
+The value is set when the iPhone connects and cleared to an empty string when it
+disconnects. Because events only fire while a device is connected, `iphone_name`
+will always be non-empty in practice.
+
+If you have more than one ANCS device paired, `iphone_name` identifies which phone
+sent the notification (while `device_name` identifies which ESP32 fired the event).
 
 ### `uid` field
 
