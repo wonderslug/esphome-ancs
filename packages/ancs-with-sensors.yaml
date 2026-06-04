@@ -13,15 +13,20 @@
 #   substitutions:
 #     friendly_name: "Living Room"
 #     ancs_name: "Living Room ANCS"   # optional, defaults to "ANCS HA Bridge"
+#
+# Override the component ref (useful for development or feature branches):
+#   substitutions:
+#     ancs_ref: "feat/my-branch"
 
 substitutions:
   ancs_name: "ANCS HA Bridge"
+  ancs_ref: "master"
 
 external_components:
   - source:
       type: git
       url: https://github.com/wonderslug/esphome-ancs
-      ref: master
+      ref: "${ancs_ref}"
     components: [ancs]
 
 ancs:
