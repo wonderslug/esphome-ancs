@@ -70,17 +70,33 @@ static inline const ble_uuid_t *u128p(ble_uuid128_t *u) {
 }
 
 // ---------------------------------------------------------------------------
-// Connection state
+// Per-connection state
 // ---------------------------------------------------------------------------
-static uint16_t s_conn_handle = BLE_HS_CONN_HANDLE_NONE;
-static uint16_t s_ns_handle = 0;  // Notification Source value handle
-static uint16_t s_cp_handle = 0;  // Control Point value handle
-static uint16_t s_ds_handle = 0;  // Data Source value handle
+#ifndef CONFIG_BT_NIMBLE_MAX_CONNECTIONS
+#define CONFIG_BT_NIMBLE_MAX_CONNECTIONS 3
+#endif
 
-static protocol::DataSourceAssembler s_assembler;
-static uint32_t s_fetch_uid = 0;
-static protocol::Category s_fetch_category = protocol::Category::OTHER;
-static bool s_fetch_pending = false;  // true while waiting for Data Source to complete
+struct ConnState {
+  bool     active{false};
+  uint16_t conn_handle{BLE_HS_CONN_HANDLE_NONE};
+  uint16_t ns_handle{0};
+  uint16_t cp_handle{0};
+  uint16_t ds_handle{0};
+  protocol::DataSourceAssembler assembler;
+  bool     fetch_pending{false};
+  uint32_t fetch_uid{0};
+  protocol::Category fetch_category{protocol::Category::OTHER};
+  char     peer_name_buf[64]{};
+};
+
+static ConnState s_conns[CONFIG_BT_NIMBLE_MAX_CONNECTIONS];
+
+// UID → conn_handle routing table (circular buffer, 2× max-connections entries).
+// Populated on every NOTIF_ADDED so request_attributes(uid) can find the right slot.
+struct UidRoute { uint32_t uid; uint16_t conn_handle; };
+static constexpr uint8_t k_uid_route_size = 2 * CONFIG_BT_NIMBLE_MAX_CONNECTIONS;
+static UidRoute s_uid_routes[k_uid_route_size]{};
+static uint8_t  s_uid_route_idx{0};
 
 // Set by start_advertising(), cleared by loop() once the deferred override
 // is successfully applied from the main-loop task.
@@ -104,6 +120,55 @@ static void push_event(const BleEvent &ev) {
 }
 
 // ---------------------------------------------------------------------------
+// Slot management helpers
+// ---------------------------------------------------------------------------
+static ConnState *find_slot(uint16_t conn_handle) {
+  for (auto &s : s_conns)
+    if (s.active && s.conn_handle == conn_handle) return &s;
+  return nullptr;
+}
+
+static ConnState *alloc_slot(uint16_t conn_handle) {
+  for (auto &s : s_conns) {
+    if (!s.active) {
+      s = ConnState{};
+      s.conn_handle = conn_handle;
+      s.active = true;
+      return &s;
+    }
+  }
+  return nullptr;
+}
+
+static void free_slot(uint16_t conn_handle) {
+  ConnState *s = find_slot(conn_handle);
+  if (s) *s = ConnState{};
+}
+
+static uint8_t count_active_slots() {
+  uint8_t n = 0;
+  for (const auto &s : s_conns)
+    if (s.active) n++;
+  return n;
+}
+
+static void register_uid_route(uint32_t uid, uint16_t conn_handle) {
+  s_uid_routes[s_uid_route_idx] = {uid, conn_handle};
+  s_uid_route_idx = (s_uid_route_idx + 1) % k_uid_route_size;
+}
+
+static uint16_t lookup_uid_route(uint32_t uid) {
+  // Scan backwards (most-recently-added first) to find freshest mapping
+  for (uint8_t i = 0; i < k_uid_route_size; i++) {
+    uint8_t idx = (s_uid_route_idx + k_uid_route_size - 1 - i) % k_uid_route_size;
+    if (s_uid_routes[idx].conn_handle != BLE_HS_CONN_HANDLE_NONE &&
+        s_uid_routes[idx].uid == uid)
+      return s_uid_routes[idx].conn_handle;
+  }
+  return BLE_HS_CONN_HANDLE_NONE;
+}
+
+// ---------------------------------------------------------------------------
 // DIS (Device Information Service) GATT table
 // ---------------------------------------------------------------------------
 #define MK_UUID16(val)        \
@@ -122,9 +187,6 @@ static ble_uuid16_t s_uuid_chr_fw_rev = MK_UUID16(0x2A26);
 static ble_uuid16_t s_uuid_device_name = MK_UUID16(0x2A00);
 
 #undef MK_UUID16
-
-// Scratch buffer for the iPhone's device name while the GATT read is in flight.
-static char s_peer_name_buf[64];
 
 static inline const ble_uuid_t *u16p(ble_uuid16_t *u) {
   return reinterpret_cast<const ble_uuid_t *>(u);
@@ -243,8 +305,8 @@ static const struct ble_gatt_svc_def s_dis_svcs[] = {
 // Forward declarations
 // ---------------------------------------------------------------------------
 static void start_advertising();
-static void handle_notification_source(const uint8_t *buf, uint16_t len);
-static void handle_data_source(const uint8_t *buf, uint16_t len);
+static void handle_notification_source(const uint8_t *buf, uint16_t len, ConnState *slot);
+static void handle_data_source(const uint8_t *buf, uint16_t len, ConnState *slot);
 static int on_disc_svc(uint16_t conn_handle, const struct ble_gatt_error *error, const struct ble_gatt_svc *svc,
                        void *arg);
 static int on_disc_chr(uint16_t conn_handle, const struct ble_gatt_error *error, const struct ble_gatt_chr *chr,
@@ -256,21 +318,22 @@ static int on_disc_chr(uint16_t conn_handle, const struct ble_gatt_error *error,
 // ---------------------------------------------------------------------------
 static int read_device_name_cb(uint16_t conn_handle, const struct ble_gatt_error *error, struct ble_gatt_attr *attr,
                                void *arg) {
-  (void)conn_handle;
   (void)arg;
+  ConnState *slot = find_slot(conn_handle);
+  if (!slot) return 0;  // connection dropped before read completed
 
   if (error->status == 0 && attr != nullptr && attr->om != nullptr) {
     uint16_t len = OS_MBUF_PKTLEN(attr->om);
-    uint16_t copy = (len < sizeof(s_peer_name_buf) - 1) ? len : (uint16_t)(sizeof(s_peer_name_buf) - 1);
-    os_mbuf_copydata(attr->om, 0, copy, s_peer_name_buf);
-    s_peer_name_buf[copy] = '\0';
+    uint16_t copy = (len < sizeof(slot->peer_name_buf) - 1) ? len : (uint16_t)(sizeof(slot->peer_name_buf) - 1);
+    os_mbuf_copydata(attr->om, 0, copy, slot->peer_name_buf);
+    slot->peer_name_buf[copy] = '\0';
     return 0;  // wait for BLE_HS_EDONE to push the event
   }
 
   // BLE_HS_EDONE or error — emit CONNECTED with whatever name we have.
   BleEvent ev{};
   ev.type = BleEventType::CONNECTED;
-  ev.device_name = (s_peer_name_buf[0] != '\0') ? s_peer_name_buf : "iPhone";
+  ev.device_name = (slot->peer_name_buf[0] != '\0') ? slot->peer_name_buf : "iPhone";
   push_event(ev);
   ESP_LOGI(TAG, "ANCS ready — connected to: %s", ev.device_name.c_str());
   return 0;
@@ -308,78 +371,78 @@ static int gap_event_cb(struct ble_gap_event *event, void *arg) {
   switch (event->type) {
     case BLE_GAP_EVENT_CONNECT:
       if (event->connect.status == 0) {
-        s_conn_handle = event->connect.conn_handle;
-        ESP_LOGI(TAG, "connected handle=%u — initiating security", s_conn_handle);
-        // Ask iOS to bond; discovery happens only after encryption (ENC_CHANGE)
-        ble_gap_security_initiate(s_conn_handle);
+        ConnState *slot = alloc_slot(event->connect.conn_handle);
+        if (!slot) {
+          ESP_LOGW(TAG, "no free connection slots — rejecting handle=%u", event->connect.conn_handle);
+          ble_gap_terminate(event->connect.conn_handle, 0x13);
+          return 0;
+        }
+        ESP_LOGI(TAG, "connected handle=%u — initiating security", slot->conn_handle);
+        ble_gap_security_initiate(slot->conn_handle);
+        if (count_active_slots() < CONFIG_BT_NIMBLE_MAX_CONNECTIONS)
+          start_advertising();
       } else {
         ESP_LOGW(TAG, "connect failed status=%d", event->connect.status);
         start_advertising();
       }
       return 0;
 
-    case BLE_GAP_EVENT_DISCONNECT:
-      ESP_LOGI(TAG, "disconnected handle=%u reason=%d", event->disconnect.conn.conn_handle, event->disconnect.reason);
-      s_conn_handle = BLE_HS_CONN_HANDLE_NONE;
-      s_ns_handle = 0;
-      s_cp_handle = 0;
-      s_ds_handle = 0;
-      s_fetch_pending = false;
-      push_event(BleEvent{BleEventType::DISCONNECTED});
+    case BLE_GAP_EVENT_DISCONNECT: {
+      uint16_t dc_handle = event->disconnect.conn.conn_handle;
+      ESP_LOGI(TAG, "disconnected handle=%u reason=%d", dc_handle, event->disconnect.reason);
+      ConnState *slot = find_slot(dc_handle);
+      BleEvent ev{};
+      ev.type = BleEventType::DISCONNECTED;
+      ev.device_name = slot ? slot->peer_name_buf : "";
+      free_slot(dc_handle);
+      push_event(ev);
       start_advertising();
       return 0;
+    }
 
     case BLE_GAP_EVENT_ENC_CHANGE: {
       uint16_t enc_handle = event->enc_change.conn_handle;
-
-      // Discard stale ENC_CHANGE events queued for a connection that has
-      // already been disconnected (and s_conn_handle reset to NONE or
-      // a new handle). Calling disc_all_svcs with a dead handle returns
-      // rc=7 (ENOTCONN) and can corrupt GATTC state for the new connection.
-      if (enc_handle != s_conn_handle) {
-        ESP_LOGW(TAG, "stale enc_change for handle=%u (active=%u) — ignoring", enc_handle, s_conn_handle);
+      ConnState *slot = find_slot(enc_handle);
+      if (!slot) {
+        ESP_LOGW(TAG, "enc_change for unknown handle=%u — ignoring", enc_handle);
         return 0;
       }
-
       if (event->enc_change.status == 0) {
         struct ble_gap_conn_desc desc;
         if (ble_gap_conn_find(enc_handle, &desc) == 0 && desc.sec_state.encrypted) {
           ESP_LOGI(TAG, "encrypted — starting ANCS service discovery");
-          // Use enc_handle (the event's handle), NOT s_conn_handle — they are
-          // the same at this point (guarded above) but being explicit avoids
-          // a repeat of the stale-handle bug if the code is later refactored.
           int rc = ble_gattc_disc_all_svcs(enc_handle, on_disc_svc, NULL);
           if (rc != 0) {
             ESP_LOGE(TAG, "ble_gattc_disc_all_svcs failed rc=%d — terminating", rc);
-            ble_gap_terminate(enc_handle, 0x13 /* remote user terminated */);
+            ble_gap_terminate(enc_handle, 0x13);
           }
         } else {
           ESP_LOGW(TAG, "enc_change ok but not encrypted — skipping discovery");
         }
       } else {
-        // Encryption failed (e.g. 30-second SMP timeout, auth failure).
-        // Terminate the connection so the disconnect handler fires, cleans
-        // up state, and restarts advertising for a clean reconnect attempt.
         ESP_LOGW(TAG, "enc_change failed status=%d — terminating to recover", event->enc_change.status);
-        ble_gap_terminate(enc_handle, 0x13 /* remote user terminated */);
+        ble_gap_terminate(enc_handle, 0x13);
       }
       return 0;
     }
 
     case BLE_GAP_EVENT_NOTIFY_RX: {
+      uint16_t notify_conn = event->notify_rx.conn_handle;
       uint16_t attr_handle = event->notify_rx.attr_handle;
+      ConnState *slot = find_slot(notify_conn);
+      if (!slot) return 0;
+
       uint16_t pkt_len = OS_MBUF_PKTLEN(event->notify_rx.om);
-      if (pkt_len == 0)
-        return 0;
+      if (pkt_len == 0) return 0;
 
       uint8_t buf[protocol::ANCS_ATTR_BUF_SIZE];
       uint16_t copy_len = (pkt_len < protocol::ANCS_ATTR_BUF_SIZE) ? pkt_len : (uint16_t)protocol::ANCS_ATTR_BUF_SIZE;
       os_mbuf_copydata(event->notify_rx.om, 0, copy_len, buf);
 
-      if (attr_handle == s_ns_handle) {
-        handle_notification_source(buf, copy_len);
-      } else if (attr_handle == s_ds_handle) {
-        handle_data_source(buf, copy_len);
+      if (attr_handle == slot->ns_handle) {
+        handle_notification_source(buf, copy_len, slot);
+      } else if (attr_handle == slot->ds_handle) {
+        handle_data_source(buf, copy_len, slot);
       }
       return 0;
     }
@@ -421,12 +484,12 @@ static int on_disc_svc(uint16_t conn_handle, const struct ble_gatt_error *error,
   }
 
   if (ble_uuid_cmp(&svc->uuid.u, u128p(&s_ancs_svc_uuid)) == 0) {
+    ConnState *slot = find_slot(conn_handle);
+    if (!slot) return 0;
     ESP_LOGI(TAG, "ANCS service found start=%u end=%u", svc->start_handle, svc->end_handle);
-    // Reset handles — they are per-connection and must be re-discovered
-    s_ns_handle = 0;
-    s_cp_handle = 0;
-    s_ds_handle = 0;
-
+    slot->ns_handle = 0;
+    slot->cp_handle = 0;
+    slot->ds_handle = 0;
     int rc = ble_gattc_disc_all_chrs(conn_handle, svc->start_handle, svc->end_handle, on_disc_chr, NULL);
     if (rc != 0) {
       ESP_LOGE(TAG, "ble_gattc_disc_all_chrs failed rc=%d", rc);
@@ -441,22 +504,19 @@ static int on_disc_svc(uint16_t conn_handle, const struct ble_gatt_error *error,
 static int on_disc_chr(uint16_t conn_handle, const struct ble_gatt_error *error, const struct ble_gatt_chr *chr,
                        void *arg) {
   (void)arg;
+  ConnState *slot = find_slot(conn_handle);
+  if (!slot) return 0;
 
   if (error->status == BLE_HS_EDONE) {
-    // All ANCS characteristics found — subscribe to NS + DS notifications.
-    ESP_LOGI(TAG, "ANCS chars done: ns=%u cp=%u ds=%u", s_ns_handle, s_cp_handle, s_ds_handle);
-    if (s_ns_handle)
-      write_cccd_enable(conn_handle, s_ns_handle);
-    if (s_ds_handle)
-      write_cccd_enable(conn_handle, s_ds_handle);
+    ESP_LOGI(TAG, "ANCS chars done: ns=%u cp=%u ds=%u", slot->ns_handle, slot->cp_handle, slot->ds_handle);
+    if (slot->ns_handle)
+      write_cccd_enable(conn_handle, slot->ns_handle);
+    if (slot->ds_handle)
+      write_cccd_enable(conn_handle, slot->ds_handle);
 
-    // Read the iPhone's display name from the GAP Device Name characteristic
-    // (0x2A00 in the Generic Access Service). The CONNECTED event is pushed
-    // inside read_device_name_cb once the read completes (~100 ms).
-    s_peer_name_buf[0] = '\0';
+    slot->peer_name_buf[0] = '\0';
     int rc = ble_gattc_read_by_uuid(conn_handle, 1, 0xFFFF, u16p(&s_uuid_device_name), read_device_name_cb, nullptr);
     if (rc != 0) {
-      // Read could not be initiated — push CONNECTED immediately with no name.
       ESP_LOGW(TAG, "device name read failed rc=%d", rc);
       BleEvent ev{};
       ev.type = BleEventType::CONNECTED;
@@ -471,16 +531,15 @@ static int on_disc_chr(uint16_t conn_handle, const struct ble_gatt_error *error,
     return 0;
   }
 
-  // Match characteristic UUIDs and store value handles
   if (ble_uuid_cmp(&chr->uuid.u, u128p(&s_notif_src_uuid)) == 0) {
-    s_ns_handle = chr->val_handle;
-    ESP_LOGD(TAG, "NotifSrc val_handle=%u", s_ns_handle);
+    slot->ns_handle = chr->val_handle;
+    ESP_LOGD(TAG, "NotifSrc val_handle=%u", slot->ns_handle);
   } else if (ble_uuid_cmp(&chr->uuid.u, u128p(&s_ctrl_point_uuid)) == 0) {
-    s_cp_handle = chr->val_handle;
-    ESP_LOGD(TAG, "CtrlPoint val_handle=%u", s_cp_handle);
+    slot->cp_handle = chr->val_handle;
+    ESP_LOGD(TAG, "CtrlPoint val_handle=%u", slot->cp_handle);
   } else if (ble_uuid_cmp(&chr->uuid.u, u128p(&s_data_src_uuid)) == 0) {
-    s_ds_handle = chr->val_handle;
-    ESP_LOGD(TAG, "DataSrc val_handle=%u", s_ds_handle);
+    slot->ds_handle = chr->val_handle;
+    ESP_LOGD(TAG, "DataSrc val_handle=%u", slot->ds_handle);
   }
   return 0;
 }
@@ -488,14 +547,13 @@ static int on_disc_chr(uint16_t conn_handle, const struct ble_gatt_error *error,
 // ---------------------------------------------------------------------------
 // Notification Source handler
 // ---------------------------------------------------------------------------
-static void handle_notification_source(const uint8_t *buf, uint16_t len) {
+static void handle_notification_source(const uint8_t *buf, uint16_t len, ConnState *slot) {
   protocol::NotificationSource ns;
   if (!protocol::parse_notification_source(buf, len, ns)) {
     ESP_LOGW(TAG, "notification_source: parse failed (len=%u)", len);
     return;
   }
 
-  // Discard pre-existing notifications — avoid false alerts on reconnect
   if (protocol::is_pre_existing(ns)) {
     ESP_LOGV(TAG, "discard pre-existing uid=%u", ns.uid);
     return;
@@ -509,17 +567,15 @@ static void handle_notification_source(const uint8_t *buf, uint16_t len) {
       ev.category = ns.category;
       ev.category_count = ns.category_count;
       ev.flags = ns.event_flags;
+      ev.device_name = slot->peer_name_buf;
       push_event(ev);
+      register_uid_route(ns.uid, slot->conn_handle);
 
-      // Auto-fetch attributes if configured, control-point is available,
-      // and no fetch is already in flight. Skipping while a fetch is pending
-      // prevents mbuf exhaustion (BLE_HS_ENOMEM) when iOS delivers several
-      // notifications in rapid succession and keeps the assembler coherent.
-      if (s_cfg.auto_fetch && s_cp_handle != 0 && !s_cfg.fetch_attributes.empty() && !s_fetch_pending) {
-        s_assembler.reset(ns.uid, s_cfg.fetch_attributes);
-        s_fetch_uid = ns.uid;
-        s_fetch_category = ns.category;
-        s_fetch_pending = true;
+      if (s_cfg.auto_fetch && slot->cp_handle != 0 && !s_cfg.fetch_attributes.empty() && !slot->fetch_pending) {
+        slot->assembler.reset(ns.uid, s_cfg.fetch_attributes);
+        slot->fetch_uid = ns.uid;
+        slot->fetch_category = ns.category;
+        slot->fetch_pending = true;
 
         protocol::AttributeRequest reqs[8];
         size_t n_reqs = build_attr_requests(reqs, 8);
@@ -528,10 +584,10 @@ static void handle_notification_source(const uint8_t *buf, uint16_t len) {
         size_t cmd_len = protocol::build_get_notification_attributes(ns.uid, reqs, n_reqs, cmd, sizeof(cmd));
 
         if (cmd_len > 0) {
-          int rc = ble_gattc_write_flat(s_conn_handle, s_cp_handle, cmd, cmd_len, NULL, NULL);
+          int rc = ble_gattc_write_flat(slot->conn_handle, slot->cp_handle, cmd, cmd_len, NULL, NULL);
           if (rc != 0) {
             ESP_LOGW(TAG, "write ctrl_point failed rc=%d; will retry on next notification", rc);
-            s_fetch_pending = false;  // allow retry on the next ADDED event
+            slot->fetch_pending = false;
           }
         }
       }
@@ -544,6 +600,7 @@ static void handle_notification_source(const uint8_t *buf, uint16_t len) {
       ev.uid = ns.uid;
       ev.category = ns.category;
       ev.flags = ns.event_flags;
+      ev.device_name = slot->peer_name_buf;
       push_event(ev);
       break;
     }
@@ -553,6 +610,7 @@ static void handle_notification_source(const uint8_t *buf, uint16_t len) {
       ev.type = BleEventType::NOTIF_REMOVED;
       ev.uid = ns.uid;
       ev.category = ns.category;
+      ev.device_name = slot->peer_name_buf;
       push_event(ev);
       break;
     }
@@ -566,24 +624,24 @@ static void handle_notification_source(const uint8_t *buf, uint16_t len) {
 // ---------------------------------------------------------------------------
 // Data Source handler
 // ---------------------------------------------------------------------------
-static void handle_data_source(const uint8_t *buf, uint16_t len) {
-  auto status = s_assembler.feed(buf, len);
+static void handle_data_source(const uint8_t *buf, uint16_t len, ConnState *slot) {
+  auto status = slot->assembler.feed(buf, len);
 
   switch (status) {
     case protocol::DataSourceAssembler::Status::NEED_MORE:
-      // Partial — wait for more fragments
       break;
 
     case protocol::DataSourceAssembler::Status::COMPLETE: {
-      s_fetch_pending = false;
+      slot->fetch_pending = false;
       BleEvent ev{};
       ev.type = BleEventType::ATTRIBUTES;
-      ev.uid = s_fetch_uid;
-      ev.category = s_fetch_category;
-      ev.app_id = s_assembler.value(protocol::AttributeId::APP_IDENTIFIER);
-      ev.title = s_assembler.value(protocol::AttributeId::TITLE);
-      ev.subtitle = s_assembler.value(protocol::AttributeId::SUBTITLE);
-      ev.message = s_assembler.value(protocol::AttributeId::MESSAGE);
+      ev.uid = slot->fetch_uid;
+      ev.category = slot->fetch_category;
+      ev.app_id = slot->assembler.value(protocol::AttributeId::APP_IDENTIFIER);
+      ev.title = slot->assembler.value(protocol::AttributeId::TITLE);
+      ev.subtitle = slot->assembler.value(protocol::AttributeId::SUBTITLE);
+      ev.message = slot->assembler.value(protocol::AttributeId::MESSAGE);
+      ev.device_name = slot->peer_name_buf;
       push_event(ev);
       break;
     }
@@ -789,12 +847,18 @@ bool AncsBle::pop_event(BleEvent &out) {
 // ---------------------------------------------------------------------------
 
 void AncsBle::request_attributes(uint32_t uid) {
-  if (s_cp_handle == 0 || s_cfg.fetch_attributes.empty())
+  uint16_t conn_handle = lookup_uid_route(uid);
+  if (conn_handle == BLE_HS_CONN_HANDLE_NONE) {
+    ESP_LOGW(TAG, "request_attributes: no route for uid=%u", uid);
+    return;
+  }
+  ConnState *slot = find_slot(conn_handle);
+  if (!slot || slot->cp_handle == 0 || s_cfg.fetch_attributes.empty())
     return;
 
-  s_assembler.reset(uid, s_cfg.fetch_attributes);
-  s_fetch_uid = uid;
-  s_fetch_category = protocol::Category::OTHER;  // no known category for manual fetch
+  slot->assembler.reset(uid, s_cfg.fetch_attributes);
+  slot->fetch_uid = uid;
+  slot->fetch_category = protocol::Category::OTHER;
 
   protocol::AttributeRequest reqs[8];
   size_t n_reqs = build_attr_requests(reqs, 8);
@@ -803,7 +867,7 @@ void AncsBle::request_attributes(uint32_t uid) {
   size_t cmd_len = protocol::build_get_notification_attributes(uid, reqs, n_reqs, cmd, sizeof(cmd));
 
   if (cmd_len > 0) {
-    int rc = ble_gattc_write_flat(s_conn_handle, s_cp_handle, cmd, cmd_len, NULL, NULL);
+    int rc = ble_gattc_write_flat(slot->conn_handle, slot->cp_handle, cmd, cmd_len, NULL, NULL);
     if (rc != 0) {
       ESP_LOGW(TAG, "request_attributes: write ctrl_point failed rc=%d", rc);
     }
@@ -811,11 +875,12 @@ void AncsBle::request_attributes(uint32_t uid) {
 }
 
 void AncsBle::disconnect() {
-  if (s_conn_handle == BLE_HS_CONN_HANDLE_NONE)
-    return;
-  int rc = ble_gap_terminate(s_conn_handle, 0x13 /* BLE_ERR_REM_USER_CONN_TERM */);
-  if (rc != 0) {
-    ESP_LOGW(TAG, "ble_gap_terminate failed rc=%d", rc);
+  for (const auto &s : s_conns) {
+    if (!s.active) continue;
+    int rc = ble_gap_terminate(s.conn_handle, 0x13 /* BLE_ERR_REM_USER_CONN_TERM */);
+    if (rc != 0) {
+      ESP_LOGW(TAG, "ble_gap_terminate handle=%u failed rc=%d", s.conn_handle, rc);
+    }
   }
 }
 
