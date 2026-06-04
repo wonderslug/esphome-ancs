@@ -45,20 +45,24 @@ class AncsComponent : public Component {
   void set_last_caller_text_sensor(text_sensor::TextSensor *s) { last_caller_ts_ = s; }
 #endif
 
-  void add_on_connect_callback(std::function<void()> cb) { on_connect_.add(std::move(cb)); }
-  void add_on_disconnect_callback(std::function<void()> cb) { on_disconnect_.add(std::move(cb)); }
-  void add_on_added_callback(std::function<void(uint32_t, const std::string &, uint8_t, uint8_t)> cb) {
+  void add_on_connect_callback(std::function<void(const std::string &)> cb) { on_connect_.add(std::move(cb)); }
+  void add_on_disconnect_callback(std::function<void(const std::string &)> cb) { on_disconnect_.add(std::move(cb)); }
+  void add_on_added_callback(
+      std::function<void(uint32_t, const std::string &, uint8_t, uint8_t, const std::string &)> cb) {
     on_added_.add(std::move(cb));
   }
-  void add_on_modified_callback(std::function<void(uint32_t, const std::string &, uint8_t)> cb) {
+  void add_on_modified_callback(
+      std::function<void(uint32_t, const std::string &, uint8_t, const std::string &)> cb) {
     on_modified_.add(std::move(cb));
   }
-  void add_on_removed_callback(std::function<void(uint32_t, const std::string &)> cb) {
+  void add_on_removed_callback(
+      std::function<void(uint32_t, const std::string &, const std::string &)> cb) {
     on_removed_.add(std::move(cb));
   }
-  void add_on_attributes_callback(std::function<void(uint32_t, const std::string &, const std::string &,
-                                                     const std::string &, const std::string &, const std::string &)>
-                                      cb) {
+  void add_on_attributes_callback(
+      std::function<void(uint32_t, const std::string &, const std::string &, const std::string &,
+                         const std::string &, const std::string &, const std::string &)>
+          cb) {
     on_attributes_.add(std::move(cb));
   }
 
@@ -75,7 +79,8 @@ class AncsComponent : public Component {
   bool auto_fetch_{true};
   uint8_t max_bonds_{3};
   std::vector<protocol::AttributeId> fetch_attrs_;
-  bool call_active_{false};
+  uint8_t call_active_count_{0};
+  uint8_t connected_count_{0};
   std::string connected_device_name_;
 
 #ifdef USE_BINARY_SENSOR
@@ -90,13 +95,13 @@ class AncsComponent : public Component {
   text_sensor::TextSensor *last_caller_ts_{nullptr};
 #endif
 
-  CallbackManager<void()> on_connect_;
-  CallbackManager<void()> on_disconnect_;
-  CallbackManager<void(uint32_t, const std::string &, uint8_t, uint8_t)> on_added_;
-  CallbackManager<void(uint32_t, const std::string &, uint8_t)> on_modified_;
-  CallbackManager<void(uint32_t, const std::string &)> on_removed_;
-  CallbackManager<void(uint32_t, const std::string &, const std::string &, const std::string &, const std::string &,
-                       const std::string &)>
+  CallbackManager<void(const std::string &)> on_connect_;
+  CallbackManager<void(const std::string &)> on_disconnect_;
+  CallbackManager<void(uint32_t, const std::string &, uint8_t, uint8_t, const std::string &)> on_added_;
+  CallbackManager<void(uint32_t, const std::string &, uint8_t, const std::string &)> on_modified_;
+  CallbackManager<void(uint32_t, const std::string &, const std::string &)> on_removed_;
+  CallbackManager<void(uint32_t, const std::string &, const std::string &, const std::string &,
+                       const std::string &, const std::string &, const std::string &)>
       on_attributes_;
 };
 

@@ -33,6 +33,7 @@ void AncsComponent::loop() {
     switch (ev.type) {
       case BleEventType::CONNECTED:
         ESP_LOGI(TAG, "iPhone connected: %s", ev.device_name.c_str());
+        connected_count_++;
         connected_device_name_ = ev.device_name;
 #ifdef USE_BINARY_SENSOR
         if (connected_bs_)
@@ -42,51 +43,57 @@ void AncsComponent::loop() {
         if (connected_device_ts_)
           connected_device_ts_->publish_state(ev.device_name);
 #endif
-        on_connect_.call();
+        on_connect_.call(ev.device_name);
         break;
+
       case BleEventType::DISCONNECTED:
-        ESP_LOGI(TAG, "iPhone disconnected");
-        connected_device_name_ = "";
+        ESP_LOGI(TAG, "iPhone disconnected: %s", ev.device_name.c_str());
+        if (connected_count_ > 0) connected_count_--;
+        if (connected_count_ == 0) {
+          connected_device_name_ = "";
+          call_active_count_ = 0;
 #ifdef USE_BINARY_SENSOR
-        if (connected_bs_)
-          connected_bs_->publish_state(false);
-        if (call_active_) {
-          call_active_ = false;
           if (call_active_bs_)
             call_active_bs_->publish_state(false);
-        }
-#else
-        call_active_ = false;
 #endif
 #ifdef USE_TEXT_SENSOR
-        if (connected_device_ts_)
-          connected_device_ts_->publish_state("");
+          if (connected_device_ts_)
+            connected_device_ts_->publish_state("");
 #endif
-        on_disconnect_.call();
+        }
+#ifdef USE_BINARY_SENSOR
+        if (connected_bs_)
+          connected_bs_->publish_state(connected_count_ > 0);
+#endif
+        on_disconnect_.call(ev.device_name);
         break;
+
       case BleEventType::NOTIF_ADDED:
         if (ev.category == protocol::Category::INCOMING_CALL) {
-          call_active_ = true;
+          call_active_count_++;
 #ifdef USE_BINARY_SENSOR
           if (call_active_bs_)
             call_active_bs_->publish_state(true);
 #endif
         }
-        on_added_.call(ev.uid, cat, ev.category_count, ev.flags);
+        on_added_.call(ev.uid, cat, ev.category_count, ev.flags, ev.device_name);
         break;
+
       case BleEventType::NOTIF_MODIFIED:
-        on_modified_.call(ev.uid, cat, ev.flags);
+        on_modified_.call(ev.uid, cat, ev.flags, ev.device_name);
         break;
+
       case BleEventType::NOTIF_REMOVED:
-        if (ev.category == protocol::Category::INCOMING_CALL && call_active_) {
-          call_active_ = false;
+        if (ev.category == protocol::Category::INCOMING_CALL && call_active_count_ > 0) {
+          call_active_count_--;
 #ifdef USE_BINARY_SENSOR
-          if (call_active_bs_)
+          if (call_active_bs_ && call_active_count_ == 0)
             call_active_bs_->publish_state(false);
 #endif
         }
-        on_removed_.call(ev.uid, cat);
+        on_removed_.call(ev.uid, cat, ev.device_name);
         break;
+
       case BleEventType::ATTRIBUTES:
 #ifdef USE_TEXT_SENSOR
         if (last_title_ts_)
@@ -98,7 +105,7 @@ void AncsComponent::loop() {
         if (last_caller_ts_ && ev.category == protocol::Category::INCOMING_CALL)
           last_caller_ts_->publish_state(ev.title);
 #endif
-        on_attributes_.call(ev.uid, cat, ev.app_id, ev.title, ev.subtitle, ev.message);
+        on_attributes_.call(ev.uid, cat, ev.app_id, ev.title, ev.subtitle, ev.message, ev.device_name);
         break;
     }
   }
