@@ -81,7 +81,7 @@ or inherit from `ancs.yaml`:
 - **Binary sensors** — `connected` (HA entity: **"[friendly_name] iPhone Connected"**)
   and `call_active` (HA entity: **"[friendly_name] Call Active"**).
 - **Text sensors:**
-  - `connected_device` → HA entity **"[friendly_name] Connected Device"** — name of the
+  - `connected_device` → HA entity **"[friendly_name] Connected iPhone"** — name of the
     paired iPhone.
   - `last_title` → HA entity **"[friendly_name] Last Notification"** — the notification
     title (not "Last Title"; the friendly label is "Last Notification").
