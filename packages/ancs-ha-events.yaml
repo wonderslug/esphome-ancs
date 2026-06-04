@@ -2,10 +2,10 @@
 #
 # Fires three HA events when iPhone notifications arrive via ANCS:
 #
-#   esphome.ancs_incoming_call  — incoming call; payload: uid, caller, app_id, device_name
+#   esphome.ancs_incoming_call  — incoming call; payload: uid, caller, app_id, device_name, iphone_name
 #   esphome.ancs_notification   — all other categories; payload: uid, category, app_id,
-#                                 title, subtitle, message, device_name
-#   esphome.ancs_call_ended     — call dismissed or answered; payload: uid, device_name
+#                                 title, subtitle, message, device_name, iphone_name
+#   esphome.ancs_call_ended     — call declined or answered; payload: uid, device_name, iphone_name
 #
 # Requirements:
 #   - ancs: block in your main config with:
@@ -28,6 +28,16 @@
 
 ancs:
   on_notification_attributes:
+    - logger.log:
+        format: "ATTRS     uid=%u  cat=%-16s  app=%s  title=%s  sub=%s  msg=%s"
+        tag: "ancs.notification_attrs"
+        args:
+          - uid
+          - category.c_str()
+          - app_id.c_str()
+          - title.c_str()
+          - subtitle.c_str()
+          - message.c_str()
     - if:
         condition:
           lambda: 'return category == "incoming_call";'
@@ -39,6 +49,7 @@ ancs:
                 caller: !lambda 'return title;'
                 app_id: !lambda 'return app_id;'
                 device_name: !lambda 'return std::string(App.get_name());'
+                iphone_name: !lambda 'return id(my_ancs).get_connected_device_name();'
         else:
           - homeassistant.event:
               event: esphome.ancs_notification
@@ -50,6 +61,7 @@ ancs:
                 subtitle: !lambda 'return subtitle;'
                 message: !lambda 'return message;'
                 device_name: !lambda 'return std::string(App.get_name());'
+                iphone_name: !lambda 'return id(my_ancs).get_connected_device_name();'
 
   # Only incoming_call removals fire an event; other notification removals are intentionally ignored.
   on_notification_removed:
@@ -62,3 +74,4 @@ ancs:
               data:
                 uid: !lambda 'return std::to_string(uid);'
                 device_name: !lambda 'return std::string(App.get_name());'
+                iphone_name: !lambda 'return id(my_ancs).get_connected_device_name();'
