@@ -65,6 +65,12 @@ ancs:
 
   # Only incoming_call removals fire an event; other notification removals are intentionally ignored.
   on_notification_removed:
+    - logger.log:
+        format: "REMOVED   uid=%u  cat=%-16s"
+        tag: "ancs.notification_removed"
+        args:
+          - uid
+          - category.c_str()
     - if:
         condition:
           lambda: 'return category == "incoming_call";'
