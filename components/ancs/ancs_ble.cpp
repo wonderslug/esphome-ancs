@@ -94,9 +94,9 @@ static ConnState s_conns[CONFIG_BT_NIMBLE_MAX_CONNECTIONS];
 // UID → conn_handle routing table (circular buffer, 2× max-connections entries).
 // Populated on every NOTIF_ADDED so request_attributes(uid) can find the right slot.
 struct UidRoute { uint32_t uid; uint16_t conn_handle; };
-static constexpr uint8_t k_uid_route_size = 2 * CONFIG_BT_NIMBLE_MAX_CONNECTIONS;
+static constexpr uint16_t k_uid_route_size = 2 * CONFIG_BT_NIMBLE_MAX_CONNECTIONS;
 static UidRoute s_uid_routes[k_uid_route_size]{};
-static uint8_t  s_uid_route_idx{0};
+static uint16_t s_uid_route_idx{0};
 
 // Set by start_advertising(), cleared by loop() once the deferred override
 // is successfully applied from the main-loop task.
@@ -158,9 +158,13 @@ static void register_uid_route(uint32_t uid, uint16_t conn_handle) {
 }
 
 static uint16_t lookup_uid_route(uint32_t uid) {
-  // Scan backwards (most-recently-added first) to find freshest mapping
-  for (uint8_t i = 0; i < k_uid_route_size; i++) {
-    uint8_t idx = (s_uid_route_idx + k_uid_route_size - 1 - i) % k_uid_route_size;
+  // Scan backwards (most-recently-added first) to find freshest mapping.
+  // Known limitation: if two phones assign the same UID to different notifications,
+  // the most-recently-registered phone wins. Manual request_attributes(uid) calls
+  // may target the wrong phone in this case. Auto-fetch is unaffected (it uses
+  // slot->conn_handle directly). This is accepted scope for the experimental branch.
+  for (uint16_t i = 0; i < k_uid_route_size; i++) {
+    uint16_t idx = (s_uid_route_idx + k_uid_route_size - 1 - i) % k_uid_route_size;
     if (s_uid_routes[idx].conn_handle != BLE_HS_CONN_HANDLE_NONE &&
         s_uid_routes[idx].uid == uid)
       return s_uid_routes[idx].conn_handle;
