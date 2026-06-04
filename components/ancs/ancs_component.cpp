@@ -49,13 +49,13 @@ void AncsComponent::loop() {
       case BleEventType::DISCONNECTED:
         ESP_LOGI(TAG, "iPhone disconnected: %s", ev.device_name.c_str());
         if (connected_count_ > 0) connected_count_--;
+        call_active_count_ = 0;
+#ifdef USE_BINARY_SENSOR
+        if (call_active_bs_)
+          call_active_bs_->publish_state(false);
+#endif
         if (connected_count_ == 0) {
           connected_device_name_ = "";
-          call_active_count_ = 0;
-#ifdef USE_BINARY_SENSOR
-          if (call_active_bs_)
-            call_active_bs_->publish_state(false);
-#endif
 #ifdef USE_TEXT_SENSOR
           if (connected_device_ts_)
             connected_device_ts_->publish_state("");
