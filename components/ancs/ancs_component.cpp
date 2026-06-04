@@ -33,6 +33,7 @@ void AncsComponent::loop() {
     switch (ev.type) {
       case BleEventType::CONNECTED:
         ESP_LOGI(TAG, "iPhone connected: %s", ev.device_name.c_str());
+        connected_device_name_ = ev.device_name;
 #ifdef USE_BINARY_SENSOR
         if (connected_bs_)
           connected_bs_->publish_state(true);
@@ -45,6 +46,7 @@ void AncsComponent::loop() {
         break;
       case BleEventType::DISCONNECTED:
         ESP_LOGI(TAG, "iPhone disconnected");
+        connected_device_name_ = "";
 #ifdef USE_BINARY_SENSOR
         if (connected_bs_)
           connected_bs_->publish_state(false);
