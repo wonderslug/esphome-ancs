@@ -55,14 +55,18 @@ This is an ESPHome external component that turns an ESP32 into an Apple Notifica
 
 ### Via ESPHome packages (recommended)
 
-The simplest way to use the component in any project. Add one line to your YAML — ESPHome fetches the component automatically at compile time.
+The simplest way to use the component in any project. ESPHome fetches the component automatically at compile time.
 
-**Minimal (component code only — you configure everything):**
+> New here? The **[quick start guide](docs/quickstart.md)** gets you from zero to HA automations in under 10 minutes.
+
+**Home Assistant events (quickest path — fires HA events from every notification):**
 
 ```yaml
 packages:
-  ancs_component: github://wonderslug/esphome-ancs/packages/ancs.yaml@master
+  ancs_ha_events: github://wonderslug/esphome-ancs/packages/ancs-ha-events.yaml@master
 ```
+
+One package. Add your `esphome:`, ESP32, `wifi:`, `api:`, and `ota:` blocks — nothing else required. See the [quick start guide](docs/quickstart.md) for a copy-paste config and your first HA automation.
 
 **With sensors pre-wired (binary + text sensors appear in Home Assistant automatically):**
 
@@ -71,26 +75,25 @@ substitutions:
   friendly_name: "Living Room"
 
 packages:
-  ancs_component: github://wonderslug/esphome-ancs/packages/ancs-with-sensors.yaml@master
+  ancs_sensors: github://wonderslug/esphome-ancs/packages/ancs-with-sensors.yaml@master
 ```
 
-The `ancs-with-sensors` package uses `${friendly_name}` for sensor names — define it as a substitution and all sensors are prefixed automatically.
+The `ancs-with-sensors` package uses `${friendly_name}` for sensor names — define it as a substitution and all sensors are prefixed automatically. No `ancs:` block needed.
 
-**With Home Assistant events (fire HA events from every notification):**
+**Minimal / custom (component code only — you configure everything):**
 
 ```yaml
 packages:
   ancs_component: github://wonderslug/esphome-ancs/packages/ancs.yaml@master
-  ancs_ha_events: github://wonderslug/esphome-ancs/packages/ancs-ha-events.yaml@master
 ```
 
-The `ancs-ha-events` package fires `esphome.ancs_incoming_call`, `esphome.ancs_notification`, and `esphome.ancs_call_ended` events over the native API. Add matching `event` triggers in your HA automations to react without polling sensors. Requires `api:` and `fetch_attributes: [app_id, title, subtitle, message]`. See [docs/packages.md](docs/packages.md) for event payload details and automation examples.
+Use this when you want full control over every sensor, trigger, and action in your own YAML — device-level automations, custom logic, anything beyond what the other packages provide.
 
 **Pin to a release tag for production (recommended once the repo has releases):**
 
 ```yaml
 packages:
-  ancs_component: github://wonderslug/esphome-ancs/packages/ancs.yaml@v1.0.0
+  ancs_ha_events: github://wonderslug/esphome-ancs/packages/ancs-ha-events.yaml@v1.0.0
 ```
 
 ---
