@@ -2,7 +2,7 @@ esphome:
   name: ancs-message-blinker
 
 esp32:
-  board: wemos_d1_mini32
+  board: esp32dev
   framework:
     type: esp-idf
 
@@ -53,7 +53,7 @@ ancs:
     - script.stop: blink_message
     - light.turn_off: onboard_led
 
-# ─── LED (GPIO2 = onboard LED, active-high on D1 Mini ESP32) ─────────────────
+# ─── LED ─────────────────────────────────────────────────────────────────────
 output:
   - platform: gpio
     pin: GPIO2

@@ -2,7 +2,7 @@ esphome:
   name: ancs-call-alerts
 
 esp32:
-  board: wemos_d1_mini32
+  board: esp32dev
   framework:
     type: esp-idf
 

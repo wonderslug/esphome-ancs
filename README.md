@@ -36,11 +36,11 @@ This is an ESPHome external component that turns an ESP32 into an Apple Notifica
 | [Category reference](docs/categories/README.md) | All ANCS notification categories, trigger variables, event flags, common patterns |
 | [Packages reference](docs/packages.md) | All three packages — what each provides, requirements, minimal configs, and HA event payloads |
 
-**Example configurations** (ready to flash on a WEMOS D1 Mini ESP32):
+**Example configurations:**
 
-- [Blink on incoming call](examples/d1-mini-blink-on-call.yaml)
-- [Blink on iMessage](examples/d1-mini-blink-on-imessage.yaml)
-- [Call + missed-call / voicemail alerts](examples/d1-mini-call-and-missed-alerts.yaml)
+- [Blink on incoming call](examples/blink-on-call.yaml)
+- [Blink on iMessage](examples/blink-on-imessage.yaml)
+- [Call + missed-call / voicemail alerts](examples/call-and-missed-alerts.yaml)
 
 ---
 

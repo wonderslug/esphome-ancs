@@ -2,7 +2,7 @@ esphome:
   name: ancs-call-blinker
 
 esp32:
-  board: wemos_d1_mini32
+  board: esp32dev
   framework:
     type: esp-idf
 
@@ -45,7 +45,7 @@ ancs:
               format: "Incoming call from: %s  dev=%s"
               args: [title.c_str(), device_name.c_str()]
 
-# ─── LED (GPIO2 = onboard LED, active-high on D1 Mini ESP32) ─────────────────
+# ─── LED ─────────────────────────────────────────────────────────────────────
 output:
   - platform: gpio
     pin: GPIO2
