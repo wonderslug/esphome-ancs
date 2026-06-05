@@ -1,0 +1,16 @@
+name: Notify ANCService
+on:
+  release:
+    types: [published]
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger ANCService rebuild
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.ANCSERVICE_DISPATCH_TOKEN }}
+          repository: wonderslug/ANCService
+          event-type: component-release
+          client-payload: '{"tag": "${{ github.event.release.tag_name }}"}'
