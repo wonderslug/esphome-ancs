@@ -672,13 +672,13 @@ static std::string ancs_date_to_iso8601(const std::string &raw) {
     return raw;
   std::string out;
   out.reserve(19);
-  out.append(raw, 0, 4);   // YYYY
+  out.append(raw, 0, 4);  // YYYY
   out += '-';
-  out.append(raw, 4, 2);   // MM
+  out.append(raw, 4, 2);  // MM
   out += '-';
-  out.append(raw, 6, 2);   // DD
+  out.append(raw, 6, 2);  // DD
   out += 'T';
-  out.append(raw, 9, 2);   // HH
+  out.append(raw, 9, 2);  // HH
   out += ':';
   out.append(raw, 11, 2);  // mm
   out += ':';
