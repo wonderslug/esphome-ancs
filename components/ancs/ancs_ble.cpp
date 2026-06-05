@@ -328,6 +328,7 @@ static int on_disc_svc(uint16_t conn_handle, const struct ble_gatt_error *error,
                        void *arg);
 static int on_disc_chr(uint16_t conn_handle, const struct ble_gatt_error *error, const struct ble_gatt_chr *chr,
                        void *arg);
+static void write_cccd_enable(uint16_t conn_handle, uint16_t val_handle);
 
 // ---------------------------------------------------------------------------
 // read_device_name_cb — fires after reading the iPhone's GAP Device Name
@@ -347,7 +348,12 @@ static int read_device_name_cb(uint16_t conn_handle, const struct ble_gatt_error
     return 0;  // wait for BLE_HS_EDONE to push the event
   }
 
-  // BLE_HS_EDONE or error — emit CONNECTED with whatever name we have.
+  // BLE_HS_EDONE or error — no GATTC procedure is in flight now, so write
+  // both CCCDs then mark ready and emit CONNECTED.
+  if (slot->ns_handle)
+    write_cccd_enable(conn_handle, slot->ns_handle);
+  if (slot->ds_handle)
+    write_cccd_enable(conn_handle, slot->ds_handle);
   slot->ancs_ready = true;
   BleEvent ev{};
   ev.type = BleEventType::CONNECTED;
@@ -535,15 +541,20 @@ static int on_disc_chr(uint16_t conn_handle, const struct ble_gatt_error *error,
 
   if (error->status == BLE_HS_EDONE) {
     ESP_LOGI(TAG, "ANCS chars done: ns=%u cp=%u ds=%u", slot->ns_handle, slot->cp_handle, slot->ds_handle);
-    if (slot->ns_handle)
-      write_cccd_enable(conn_handle, slot->ns_handle);
-    if (slot->ds_handle)
-      write_cccd_enable(conn_handle, slot->ds_handle);
 
+    // Read device name BEFORE writing CCCDs. NimBLE allows only one GATTC
+    // procedure at a time per connection; starting two CCCD writes and then
+    // immediately issuing a read returns BLE_HS_EBUSY (rc=6) and falls back
+    // to "iPhone". CCCDs are written from read_device_name_cb once the read
+    // completes, so there is never a competing procedure.
     slot->peer_name_buf[0] = '\0';
     int rc = ble_gattc_read_by_uuid(conn_handle, 1, 0xFFFF, u16p(&s_uuid_device_name), read_device_name_cb, nullptr);
     if (rc != 0) {
-      ESP_LOGW(TAG, "device name read failed rc=%d", rc);
+      ESP_LOGW(TAG, "device name read failed rc=%d — writing CCCDs and connecting anyway", rc);
+      if (slot->ns_handle)
+        write_cccd_enable(conn_handle, slot->ns_handle);
+      if (slot->ds_handle)
+        write_cccd_enable(conn_handle, slot->ds_handle);
       slot->ancs_ready = true;
       BleEvent ev{};
       ev.type = BleEventType::CONNECTED;
