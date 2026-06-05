@@ -219,8 +219,9 @@ sent the notification (while `device_name` identifies which ESP32 fired the even
 
 ### `date` field
 
-`date` contains the timestamp iOS assigned to the notification, in `YYYYMMDD'T'HHmmSS` format
-(e.g. `20260604T143022`). This reflects when the notification was *generated* on the iOS side,
+`date` contains the timestamp iOS assigned to the notification, in ISO 8601 format
+`YYYY-MM-DDTHH:MM:SS` (e.g. `2026-06-04T14:30:22`). ANCS provides local device time without
+a timezone offset. This reflects when the notification was *generated* on the iOS side,
 not when it was delivered over BLE — so notifications queued while the phone was out of range
 will carry their original creation time once they sync.
 

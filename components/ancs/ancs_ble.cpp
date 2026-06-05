@@ -664,6 +664,29 @@ static void handle_notification_source(const uint8_t *buf, uint16_t len, ConnSta
 }
 
 // ---------------------------------------------------------------------------
+// Convert raw ANCS date "YYYYMMDD'T'HHmmSS" → ISO 8601 "YYYY-MM-DDTHH:MM:SS".
+// Returns the input unchanged if the 15-byte format is not recognised.
+// ---------------------------------------------------------------------------
+static std::string ancs_date_to_iso8601(const std::string &raw) {
+  if (raw.size() != 15 || raw[8] != 'T')
+    return raw;
+  std::string out;
+  out.reserve(19);
+  out.append(raw, 0, 4);   // YYYY
+  out += '-';
+  out.append(raw, 4, 2);   // MM
+  out += '-';
+  out.append(raw, 6, 2);   // DD
+  out += 'T';
+  out.append(raw, 9, 2);   // HH
+  out += ':';
+  out.append(raw, 11, 2);  // mm
+  out += ':';
+  out.append(raw, 13, 2);  // SS
+  return out;
+}
+
+// ---------------------------------------------------------------------------
 // Data Source handler
 // ---------------------------------------------------------------------------
 static void handle_data_source(const uint8_t *buf, uint16_t len, ConnState *slot) {
@@ -683,7 +706,7 @@ static void handle_data_source(const uint8_t *buf, uint16_t len, ConnState *slot
       ev.title = slot->assembler.value(protocol::AttributeId::TITLE);
       ev.subtitle = slot->assembler.value(protocol::AttributeId::SUBTITLE);
       ev.message = slot->assembler.value(protocol::AttributeId::MESSAGE);
-      ev.date = slot->assembler.value(protocol::AttributeId::DATE);
+      ev.date = ancs_date_to_iso8601(slot->assembler.value(protocol::AttributeId::DATE));
       ev.device_name = slot->peer_name_buf;
       push_event(ev);
       break;

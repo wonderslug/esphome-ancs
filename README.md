@@ -208,7 +208,7 @@ All triggers are defined inside the `ancs:` hub block.
 | `on_connect` | `device_name` (std::string) | Fires when an iPhone establishes an encrypted ANCS connection. `device_name` is the BLE display name of the phone. |
 | `on_disconnect` | `device_name` (std::string) | Fires when the connection drops. |
 | `on_notification_added` | `uid` (uint32), `category` (std::string), `category_count` (uint8), `flags` (uint8), `device_name` (std::string) | Fires immediately when a notification appears — before attribute text is fetched. Use this to react fast (e.g., start blinking on `category == "incoming_call"`). |
-| `on_notification_attributes` | `uid`, `category`, `app_id`, `title`, `subtitle`, `message`, `device_name`, `date` (all std::string) | Fires after a GATT round-trip once the requested attribute text has arrived. `date` is the iOS-assigned timestamp in `YYYYMMDD'T'HHmmSS` format (empty if `date` is not in `fetch_attributes`). |
+| `on_notification_attributes` | `uid`, `category`, `app_id`, `title`, `subtitle`, `message`, `device_name`, `date` (all std::string) | Fires after a GATT round-trip once the requested attribute text has arrived. `date` is the iOS-assigned timestamp in ISO 8601 format `YYYY-MM-DDTHH:MM:SS` (no timezone — ANCS provides local device time; empty if `date` is not in `fetch_attributes`). |
 | `on_notification_removed` | `uid` (uint32), `category` (std::string), `device_name` (std::string) | Fires when the notification is dismissed or acknowledged on the iPhone. |
 | `on_notification_modified` | `uid` (uint32), `category` (std::string), `flags` (uint8), `device_name` (std::string) | Fires when an existing notification is updated (e.g., call accepted on another device). |
 
