@@ -20,6 +20,7 @@ _FETCH_MAP = {
     "title": AttributeId.TITLE,
     "subtitle": AttributeId.SUBTITLE,
     "message": AttributeId.MESSAGE,
+    "date": AttributeId.DATE,
 }
 
 ConnectTrigger = ancs_ns.class_("ConnectTrigger", automation.Trigger.template())
@@ -47,7 +48,7 @@ CONF_MANUFACTURER = "manufacturer"
 CONF_MODEL = "model"
 CONF_NIMBLE_HOST_TASK_STACK_SIZE = "nimble_host_task_stack_size"
 
-FETCH_ATTRIBUTE_OPTIONS = ["app_id", "title", "subtitle", "message"]
+FETCH_ATTRIBUTE_OPTIONS = ["app_id", "title", "subtitle", "message", "date"]
 
 CONFIG_SCHEMA = cv.Schema(
     {
@@ -166,6 +167,7 @@ async def to_code(config):
                 (cg.std_string, "subtitle"),
                 (cg.std_string, "message"),
                 (cg.std_string, "device_name"),
+                (cg.std_string, "date"),
             ],
             conf,
         )

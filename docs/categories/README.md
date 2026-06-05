@@ -45,6 +45,8 @@ Requires `auto_fetch_attributes: true` and the relevant key in `fetch_attributes
 | `title` | `std::string` | Sender name, event title, email subject, etc. |
 | `subtitle` | `std::string` | Thread name, sender detail, etc. |
 | `message` | `std::string` | Notification body — empty if iOS previews are off |
+| `date` | `std::string` | iOS-assigned timestamp in `YYYYMMDD'T'HHmmSS` format — empty if `date` is not in `fetch_attributes` |
+| `device_name` | `std::string` | BLE display name of the connected iPhone |
 
 ### Event flags
 

@@ -58,7 +58,7 @@ class AncsComponent : public Component {
   }
   void add_on_attributes_callback(
       std::function<void(uint32_t, const std::string &, const std::string &, const std::string &, const std::string &,
-                         const std::string &, const std::string &)>
+                         const std::string &, const std::string &, const std::string &)>
           cb) {
     on_attributes_.add(std::move(cb));
   }
@@ -99,7 +99,7 @@ class AncsComponent : public Component {
   CallbackManager<void(uint32_t, const std::string &, uint8_t, const std::string &)> on_modified_;
   CallbackManager<void(uint32_t, const std::string &, const std::string &)> on_removed_;
   CallbackManager<void(uint32_t, const std::string &, const std::string &, const std::string &, const std::string &,
-                       const std::string &, const std::string &)>
+                       const std::string &, const std::string &, const std::string &)>
       on_attributes_;
 };
 

@@ -24,6 +24,7 @@ struct BleEvent {
   std::string title;
   std::string subtitle;
   std::string message;
+  std::string date;  // ISO 8601-style: "YYYYMMDD'T'HHmmSS" (empty if not requested)
   // Populated only on CONNECTED: the iPhone's own name from the GAP
   // Device Name characteristic (0x2A00), e.g. "Brian's iPhone".
   std::string device_name;

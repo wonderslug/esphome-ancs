@@ -343,7 +343,7 @@ while (ble_.pop_event(ev)):
                         fire on_removed_(uid, category_string, device_name)
         NOTIF_MODIFIED → fire on_modified_(uid, category_string, flags, device_name)
         ATTRIBUTES    → publish last_title_ts_, last_message_ts_, etc.
-                        fire on_attributes_(uid, cat, app_id, title, subtitle, message, device_name)
+                        fire on_attributes_(uid, cat, app_id, title, subtitle, message, device_name, date)
 ```
 
 All triggers receive `device_name` (std::string) as their last variable, identifying

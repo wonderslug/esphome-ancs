@@ -53,15 +53,16 @@ class NotificationRemovedTrigger : public Trigger<uint32_t, std::string, std::st
   }
 };
 
-// attributes: (uid, category, app_id, title, subtitle, message, device_name)
+// attributes: (uid, category, app_id, title, subtitle, message, device_name, date)
 class NotificationAttributesTrigger
-    : public Trigger<uint32_t, std::string, std::string, std::string, std::string, std::string, std::string> {
+    : public Trigger<uint32_t, std::string, std::string, std::string, std::string, std::string, std::string,
+                     std::string> {
  public:
   explicit NotificationAttributesTrigger(AncsComponent *parent) {
     parent->add_on_attributes_callback(
         [this](uint32_t uid, const std::string &cat, const std::string &app, const std::string &title,
-               const std::string &sub, const std::string &msg,
-               const std::string &device_name) { this->trigger(uid, cat, app, title, sub, msg, device_name); });
+               const std::string &sub, const std::string &msg, const std::string &device_name,
+               const std::string &date) { this->trigger(uid, cat, app, title, sub, msg, device_name, date); });
   }
 };
 

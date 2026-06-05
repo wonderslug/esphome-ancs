@@ -683,6 +683,7 @@ static void handle_data_source(const uint8_t *buf, uint16_t len, ConnState *slot
       ev.title = slot->assembler.value(protocol::AttributeId::TITLE);
       ev.subtitle = slot->assembler.value(protocol::AttributeId::SUBTITLE);
       ev.message = slot->assembler.value(protocol::AttributeId::MESSAGE);
+      ev.date = slot->assembler.value(protocol::AttributeId::DATE);
       ev.device_name = slot->peer_name_buf;
       push_event(ev);
       break;
