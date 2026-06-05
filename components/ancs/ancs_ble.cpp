@@ -602,15 +602,17 @@ static int on_disc_chr(uint16_t conn_handle, const struct ble_gatt_error *error,
     return 0;
   }
 
+  // Per-characteristic handles are logged together by the "ANCS chars done"
+  // summary once discovery completes (BLE_HS_EDONE above). Logging each one
+  // individually here fires three back-to-back ESP_LOGD calls from the
+  // nimble_host task during the discovery burst, which interleaves with the
+  // main-loop logger on the UART and corrupts the serial stream at VERBOSE.
   if (ble_uuid_cmp(&chr->uuid.u, u128p(&s_notif_src_uuid)) == 0) {
     slot->ns_handle = chr->val_handle;
-    ESP_LOGD(TAG, "NotifSrc val_handle=%u", slot->ns_handle);
   } else if (ble_uuid_cmp(&chr->uuid.u, u128p(&s_ctrl_point_uuid)) == 0) {
     slot->cp_handle = chr->val_handle;
-    ESP_LOGD(TAG, "CtrlPoint val_handle=%u", slot->cp_handle);
   } else if (ble_uuid_cmp(&chr->uuid.u, u128p(&s_data_src_uuid)) == 0) {
     slot->ds_handle = chr->val_handle;
-    ESP_LOGD(TAG, "DataSrc val_handle=%u", slot->ds_handle);
   }
   return 0;
 }
