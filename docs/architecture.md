@@ -133,50 +133,75 @@ BOOT
  └─ nimble_port_freertos_init(host_task)
 
 on_sync() callback (NimBLE host ready)
- └─ start_advertising()
-     ├─ ble_gap_adv_start()  ← starts advertising
-     └─ s_adv_override_pending = true  ← deferred to main loop
+ ├─ enumerate NVS bonds via ble_store_read_peer_sec()
+ │   └─ store up to MAX_CONNECTIONS peer addresses in s_reconnect_peers[]
+ └─ start_advertising_smart()
+
+start_advertising_smart()  ← called at boot, after connect success/fail, after adv timeout
+ ├─ if s_reconnect_idx < s_reconnect_count:
+ │   └─ ble_gap_adv_start(BLE_GAP_CONN_MODE_DIR, peer, 3 s)  ← directed to next stored bond
+ └─ else: start_advertising()  ← undirected solicited-UUID advertising
 
 loop() (main task, every cycle)
  └─ if s_adv_override_pending && ble_gap_adv_active():
      ├─ ble_gap_adv_set_data()   ← primary: Flags + Solicited UUID (AD 0x15) + name
      └─ ble_gap_adv_rsp_set_data()  ← scan response: full name + mfr data
 
-BLE_GAP_EVENT_CONNECT (iPhone connects via nRF Connect or Settings → Bluetooth)
- └─ ble_gap_security_initiate()  ← send SMP Security Request → iOS shows Pair dialog
+BLE_GAP_EVENT_CONNECT (status == 0 — iPhone connected)
+ ├─ alloc_slot(conn_handle)  ← assigns a free ConnState slot
+ ├─ ble_gap_security_initiate()  ← send SMP Security Request → iOS shows Pair dialog
+ └─ if slots still available: start_advertising_smart()  ← keep advertising for more phones
+
+BLE_GAP_EVENT_CONNECT (status != 0 — directed adv timed out or LL handshake failed)
+ └─ start_advertising_smart()  ← advance to next stored bond or fall back to undirected
+
+BLE_GAP_EVENT_ADV_COMPLETE (undirected advertising ended unexpectedly)
+ └─ start_advertising_smart()
 
 BLE_GAP_EVENT_REPEAT_PAIRING  (if iPhone forgot device but ESP32 has stale bond)
  └─ ble_store_util_delete_peer()  ← delete stale bond
  └─ return BLE_GAP_REPEAT_PAIRING_RETRY  ← fresh pairing proceeds
 
 BLE_GAP_EVENT_ENC_CHANGE (encryption established — discovery MUST wait for this)
- ├─ guard: discard if conn_handle != s_conn_handle (stale event from old connection)
+ ├─ find_slot(conn_handle)  ← locate the ConnState for this connection
  ├─ ble_gap_conn_find() confirms encrypted
  └─ ble_gattc_disc_all_svcs()
      └─ on_disc_svc(): match ANCS service UUID
          └─ ble_gattc_disc_all_chrs()
-             └─ on_disc_chr(): store val_handles for NS / CP / DS
-                 └─ write CCCDs (val_handle + 1 = 0x0001) for NS + DS
-                 └─ push CONNECTED event
+             └─ on_disc_chr(): store val_handles in slot (ns_handle / cp_handle / ds_handle)
+                 └─ write CCCDs for NS + DS
+                 └─ read Device Name characteristic (0x2A00) → slot.peer_name_buf
+                     └─ slot.ancs_ready = true
+                     └─ push CONNECTED event (with device_name)
 
-ANCS RUNNING
- ├─ BLE_GAP_EVENT_NOTIFY_RX on s_ns_handle → handle_notification_source()
- │   ├─ parse_notification_source() — Layer 1
- │   ├─ discard if PRE_EXISTING flag (avoids false alerts on reconnect)
- │   ├─ push NOTIF_ADDED/MODIFIED/REMOVED
- │   └─ if ADDED + auto_fetch + !s_fetch_pending:
- │       ├─ s_assembler.reset(uid, fetch_attributes)
- │       ├─ build_get_notification_attributes() — Layer 1
- │       └─ ble_gattc_write_flat() → Control Point
+ANCS RUNNING (one ConnState per connected phone, up to MAX_CONNECTIONS simultaneously)
+ ├─ BLE_GAP_EVENT_NOTIFY_RX → find_slot() by conn_handle
+ │   ├─ if attr_handle == slot.ns_handle → handle_notification_source()
+ │   │   ├─ parse_notification_source() — Layer 1
+ │   │   ├─ discard if PRE_EXISTING flag (avoids false alerts on reconnect)
+ │   │   ├─ register uid→conn_handle in s_uid_routes[] ring buffer
+ │   │   ├─ push NOTIF_ADDED/MODIFIED/REMOVED (with slot.peer_name_buf as device_name)
+ │   │   └─ if ADDED + auto_fetch + !slot.fetch_pending:
+ │   │       ├─ slot.assembler.reset(uid, fetch_attributes)
+ │   │       ├─ build_get_notification_attributes() — Layer 1
+ │   │       └─ ble_gattc_write_flat() → slot.cp_handle
+ │   └─ if attr_handle == slot.ds_handle → handle_data_source()
+ │       └─ slot.assembler.feed() — Layer 1
+ │           └─ on COMPLETE: push ATTRIBUTES event (with device_name)
  │
- └─ BLE_GAP_EVENT_NOTIFY_RX on s_ds_handle → handle_data_source()
-     └─ s_assembler.feed() — Layer 1
-         └─ on COMPLETE: push ATTRIBUTES event
+ └─ UID routing (request_attributes action):
+     └─ lookup_uid_route(uid, device_name?)  ← resolves uid to conn_handle
+         ├─ searches s_uid_routes[] ring buffer most-recent-first
+         └─ optional device_name filter resolves collisions when two phones
+            have identical UIDs (iOS assigns UIDs sequentially from a low counter)
 
 BLE_GAP_EVENT_DISCONNECT
- ├─ reset all handles to 0, s_fetch_pending = false
- ├─ push DISCONNECTED event
- └─ start_advertising()  ← immediate auto-reconnect advertising
+ ├─ find_slot(conn_handle)
+ ├─ if slot.ancs_ready: push DISCONNECTED event  ← guard prevents spurious events
+ │   (connections that fail before ANCS discovery completes never fire CONNECTED,
+ │    so they must not fire DISCONNECTED either)
+ ├─ free_slot(conn_handle)
+ └─ start_advertising()  ← undirected (boot-time directed cycle is one-shot)
 ```
 
 ---
@@ -273,11 +298,29 @@ handle (`s_queue`, written once at init) and the volatile advertising-pending
 flag (`s_adv_override_pending`). All other state is touched only from the NimBLE
 host task.
 
-**`s_fetch_pending` guard:** prevents concurrent `ble_gattc_write_flat()`
-calls to the Control Point when iOS delivers several notifications in rapid
-succession. A second ADDED event while a fetch is in flight skips the fetch
-entirely; `s_fetch_pending` is cleared when `DataSourceAssembler` returns
-`COMPLETE`, when a write fails, or on disconnect.
+**`ConnState` slot array:** replaces the former single-connection globals. Each
+slot holds `conn_handle`, `peer_name_buf`, GATT val-handles (`ns_handle`,
+`cp_handle`, `ds_handle`), a `DataSourceAssembler`, a `fetch_pending` flag, and
+an `ancs_ready` flag. Up to `CONFIG_BT_NIMBLE_MAX_CONNECTIONS` slots are active
+simultaneously.
+
+**`fetch_pending` guard (per-slot):** prevents concurrent `ble_gattc_write_flat()`
+calls to a slot's Control Point when iOS delivers several notifications in rapid
+succession. A second ADDED event while a fetch is in flight skips the fetch;
+`fetch_pending` is cleared when the assembler returns `COMPLETE`, when a write
+fails, or on disconnect.
+
+**UID routing ring buffer (`s_uid_routes[]`):** when a notification arrives on
+any slot, a `{uid, conn_handle}` pair is appended (ring, 32 entries). The
+`request_attributes` action resolves a uid to a conn_handle by searching
+most-recent-first with an optional `device_name` filter to break ties when two
+phones have overlapping UIDs (iOS assigns UIDs from a small sequential counter).
+
+**Directed reconnect cycle:** `start_advertising_smart()` is called after
+`on_sync()`, after each connect success/failure, and after advertising completes.
+It works through `s_reconnect_peers[]` (populated from NVS bonds at boot) using
+3-second directed advertising windows before falling back to undirected. This
+ensures all previously bonded phones are proactively targeted after an ESP32 reset.
 
 ---
 
@@ -290,22 +333,30 @@ adv override) then drains the event queue:
 ```
 while (ble_.pop_event(ev)):
     switch ev.type:
-        CONNECTED     → publish connected_bs_=true, fire on_connect_
-        DISCONNECTED  → publish connected_bs_=false, call_active_=false, fire on_disconnect_
-        NOTIF_ADDED   → if incoming_call: call_active_=true, publish call_active_bs_
-                        fire on_added_(uid, category_string, count, flags)
-        NOTIF_REMOVED → if incoming_call: call_active_=false, publish call_active_bs_
-                        fire on_removed_(uid, category_string)
-        NOTIF_MODIFIED → fire on_modified_(uid, category_string, flags)
+        CONNECTED     → connected_count_++; publish connected_bs_, connected_device_ts_
+                        fire on_connect_(device_name)
+        DISCONNECTED  → connected_count_--; publish connected_bs_, call_active_bs_
+                        fire on_disconnect_(device_name)
+        NOTIF_ADDED   → if incoming_call: call_active_count_++, publish call_active_bs_
+                        fire on_added_(uid, category_string, count, flags, device_name)
+        NOTIF_REMOVED → if incoming_call: call_active_count_--, publish call_active_bs_
+                        fire on_removed_(uid, category_string, device_name)
+        NOTIF_MODIFIED → fire on_modified_(uid, category_string, flags, device_name)
         ATTRIBUTES    → publish last_title_ts_, last_message_ts_, etc.
-                        fire on_attributes_(uid, cat, app_id, title, subtitle, message)
+                        fire on_attributes_(uid, cat, app_id, title, subtitle, message, device_name)
 ```
 
-**`automation.h`** defines the six `Trigger<>` subclasses and two `Action<>`
-subclasses (`ClearBondsAction`, `DisconnectAction`). Each trigger registers a
-callback with `AncsComponent` via `add_on_*_callback()`. `__init__.py`
-instantiates these via `cg.new_Pvariable` and wires them with
-`automation.build_automation()`.
+All triggers receive `device_name` (std::string) as their last variable, identifying
+which phone the event originated from. This allows automations to filter or branch
+on a specific phone when multiple iPhones are simultaneously connected.
+
+**`automation.h`** defines the six `Trigger<>` subclasses and three `Action<>`
+subclasses (`ClearBondsAction`, `DisconnectAction`, `RequestAttributesAction`).
+Each trigger registers a callback with `AncsComponent` via `add_on_*_callback()`.
+`__init__.py` instantiates these via `cg.new_Pvariable` and wires them with
+`automation.build_automation()`. `RequestAttributesAction` accepts an optional
+`device_name` template value to disambiguate the UID lookup when multiple phones
+are connected.
 
 ---
 
@@ -317,7 +368,9 @@ Key responsibilities:
    error if Bluedroid BLE components are also present (`FINAL_VALIDATE_SCHEMA`).
 2. **sdkconfig injection** — calls `add_idf_sdkconfig_option()` for every
    required NimBLE option (enabled, peripheral+central roles, SM bonding/SC,
-   NVS persist, max bonds/CCCDs).
+   NVS persist). `max_connections` drives `CONFIG_BT_NIMBLE_MAX_CONNECTIONS`,
+   `CONFIG_BT_NIMBLE_MAX_BONDS` (set equal to connections), `CONFIG_BTDM_CTRL_BLE_MAX_CONN`,
+   `CONFIG_BT_CTRL_BLE_MAX_ACT`, and `CONFIG_BT_NIMBLE_MAX_CCCDS` (= 2 × connections + 2).
 3. **Trigger codegen** — for each `on_*` block, instantiates the correct
    `Trigger<>` class and calls `automation.build_automation()` with the typed
    lambda variable list.
