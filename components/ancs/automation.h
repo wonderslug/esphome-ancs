@@ -47,10 +47,9 @@ class NotificationModifiedTrigger : public Trigger<uint32_t, std::string, uint8_
 class NotificationRemovedTrigger : public Trigger<uint32_t, std::string, std::string> {
  public:
   explicit NotificationRemovedTrigger(AncsComponent *parent) {
-    parent->add_on_removed_callback(
-        [this](uint32_t uid, const std::string &cat, const std::string &device_name) {
-          this->trigger(uid, cat, device_name);
-        });
+    parent->add_on_removed_callback([this](uint32_t uid, const std::string &cat, const std::string &device_name) {
+      this->trigger(uid, cat, device_name);
+    });
   }
 };
 
@@ -61,9 +60,8 @@ class NotificationAttributesTrigger
   explicit NotificationAttributesTrigger(AncsComponent *parent) {
     parent->add_on_attributes_callback(
         [this](uint32_t uid, const std::string &cat, const std::string &app, const std::string &title,
-               const std::string &sub, const std::string &msg, const std::string &device_name) {
-          this->trigger(uid, cat, app, title, sub, msg, device_name);
-        });
+               const std::string &sub, const std::string &msg,
+               const std::string &device_name) { this->trigger(uid, cat, app, title, sub, msg, device_name); });
   }
 };
 
@@ -93,9 +91,7 @@ class RequestAttributesAction : public Action<Ts...> {
   explicit RequestAttributesAction(AncsComponent *p) : parent_(p) {}
   TEMPLATABLE_VALUE(uint32_t, uid)
   TEMPLATABLE_VALUE(std::string, device_name)
-  void play(Ts... x) override {
-    parent_->request_attributes(this->uid_.value(x...), this->device_name_.value(x...));
-  }
+  void play(Ts... x) override { parent_->request_attributes(this->uid_.value(x...), this->device_name_.value(x...)); }
 
  protected:
   AncsComponent *parent_;

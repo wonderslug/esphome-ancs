@@ -77,24 +77,27 @@ static inline const ble_uuid_t *u128p(ble_uuid128_t *u) {
 #endif
 
 struct ConnState {
-  bool     active{false};
-  bool     ancs_ready{false};   // true once CONNECTED event has been pushed
+  bool active{false};
+  bool ancs_ready{false};  // true once CONNECTED event has been pushed
   uint16_t conn_handle{BLE_HS_CONN_HANDLE_NONE};
   uint16_t ns_handle{0};
   uint16_t cp_handle{0};
   uint16_t ds_handle{0};
   protocol::DataSourceAssembler assembler;
-  bool     fetch_pending{false};
+  bool fetch_pending{false};
   uint32_t fetch_uid{0};
   protocol::Category fetch_category{protocol::Category::OTHER};
-  char     peer_name_buf[64]{};
+  char peer_name_buf[64]{};
 };
 
 static ConnState s_conns[CONFIG_BT_NIMBLE_MAX_CONNECTIONS];
 
 // UID → conn_handle routing table (circular buffer, 2× max-connections entries).
 // Populated on every NOTIF_ADDED so request_attributes(uid) can find the right slot.
-struct UidRoute { uint32_t uid; uint16_t conn_handle; };
+struct UidRoute {
+  uint32_t uid;
+  uint16_t conn_handle;
+};
 static constexpr uint16_t k_uid_route_size = 2 * CONFIG_BT_NIMBLE_MAX_CONNECTIONS;
 static UidRoute s_uid_routes[k_uid_route_size]{};
 static uint16_t s_uid_route_idx{0};
@@ -102,7 +105,6 @@ static uint16_t s_uid_route_idx{0};
 // Set by start_advertising(), cleared by loop() once the deferred override
 // is successfully applied from the main-loop task.
 static volatile bool s_adv_override_pending = false;
-
 
 // Push a BleEvent onto the queue (called from the NimBLE host task).
 // Heap-allocates so the std::strings survive the queue; pop_event takes ownership.
@@ -126,7 +128,8 @@ static void push_event(const BleEvent &ev) {
 // ---------------------------------------------------------------------------
 static ConnState *find_slot(uint16_t conn_handle) {
   for (auto &s : s_conns)
-    if (s.active && s.conn_handle == conn_handle) return &s;
+    if (s.active && s.conn_handle == conn_handle)
+      return &s;
   return nullptr;
 }
 
@@ -144,13 +147,15 @@ static ConnState *alloc_slot(uint16_t conn_handle) {
 
 static void free_slot(uint16_t conn_handle) {
   ConnState *s = find_slot(conn_handle);
-  if (s) *s = ConnState{};
+  if (s)
+    *s = ConnState{};
 }
 
 static uint8_t count_active_slots() {
   uint8_t n = 0;
   for (const auto &s : s_conns)
-    if (s.active) n++;
+    if (s.active)
+      n++;
   return n;
 }
 
@@ -334,7 +339,8 @@ static int read_device_name_cb(uint16_t conn_handle, const struct ble_gatt_error
                                void *arg) {
   (void)arg;
   ConnState *slot = find_slot(conn_handle);
-  if (!slot) return 0;  // connection dropped before read completed
+  if (!slot)
+    return 0;  // connection dropped before read completed
 
   if (error->status == 0 && attr != nullptr && attr->om != nullptr) {
     uint16_t len = OS_MBUF_PKTLEN(attr->om);
@@ -456,10 +462,12 @@ static int gap_event_cb(struct ble_gap_event *event, void *arg) {
       uint16_t notify_conn = event->notify_rx.conn_handle;
       uint16_t attr_handle = event->notify_rx.attr_handle;
       ConnState *slot = find_slot(notify_conn);
-      if (!slot) return 0;
+      if (!slot)
+        return 0;
 
       uint16_t pkt_len = OS_MBUF_PKTLEN(event->notify_rx.om);
-      if (pkt_len == 0) return 0;
+      if (pkt_len == 0)
+        return 0;
 
       uint8_t buf[protocol::ANCS_ATTR_BUF_SIZE];
       uint16_t copy_len = (pkt_len < protocol::ANCS_ATTR_BUF_SIZE) ? pkt_len : (uint16_t)protocol::ANCS_ATTR_BUF_SIZE;
@@ -511,7 +519,8 @@ static int on_disc_svc(uint16_t conn_handle, const struct ble_gatt_error *error,
 
   if (ble_uuid_cmp(&svc->uuid.u, u128p(&s_ancs_svc_uuid)) == 0) {
     ConnState *slot = find_slot(conn_handle);
-    if (!slot) return 0;
+    if (!slot)
+      return 0;
     ESP_LOGI(TAG, "ANCS service found start=%u end=%u", svc->start_handle, svc->end_handle);
     slot->ns_handle = 0;
     slot->cp_handle = 0;
@@ -531,7 +540,8 @@ static int on_disc_chr(uint16_t conn_handle, const struct ble_gatt_error *error,
                        void *arg) {
   (void)arg;
   ConnState *slot = find_slot(conn_handle);
-  if (!slot) return 0;
+  if (!slot)
+    return 0;
 
   if (error->status == BLE_HS_EDONE) {
     ESP_LOGI(TAG, "ANCS chars done: ns=%u cp=%u ds=%u", slot->ns_handle, slot->cp_handle, slot->ds_handle);
@@ -920,7 +930,8 @@ void AncsBle::request_attributes(uint32_t uid, const std::string &device_name) {
 
 void AncsBle::disconnect() {
   for (const auto &s : s_conns) {
-    if (!s.active) continue;
+    if (!s.active)
+      continue;
     int rc = ble_gap_terminate(s.conn_handle, 0x13 /* BLE_ERR_REM_USER_CONN_TERM */);
     if (rc != 0) {
       ESP_LOGW(TAG, "ble_gap_terminate handle=%u failed rc=%d", s.conn_handle, rc);
