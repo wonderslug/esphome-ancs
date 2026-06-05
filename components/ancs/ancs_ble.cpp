@@ -403,8 +403,25 @@ static int gap_event_cb(struct ble_gap_event *event, void *arg) {
           ble_gap_terminate(event->connect.conn_handle, 0x13);
           return 0;
         }
-        ESP_LOGI(TAG, "connected handle=%u — initiating security", slot->conn_handle);
-        ble_gap_security_initiate(slot->conn_handle);
+        // For bonded peers iOS automatically starts LL encryption on reconnect.
+        // Sending a Security Request while LL_START_ENC is already in flight
+        // makes iOS respond with SMP Pairing Failed (0x0D), causing the
+        // enc_change status=13 retry storm after power cycle. Only send the
+        // Security Request for new (unbonded) peers to trigger the pairing dialog.
+        struct ble_gap_conn_desc connect_desc;
+        bool already_bonded = false;
+        if (ble_gap_conn_find(slot->conn_handle, &connect_desc) == 0) {
+          struct ble_store_key_sec bond_key = {};
+          bond_key.peer_addr = connect_desc.peer_id_addr;
+          struct ble_store_value_sec bond_val;
+          already_bonded = (ble_store_read_peer_sec(&bond_key, &bond_val) == 0);
+        }
+        if (already_bonded) {
+          ESP_LOGI(TAG, "connected handle=%u — bonded peer, waiting for LTK encryption", slot->conn_handle);
+        } else {
+          ESP_LOGI(TAG, "connected handle=%u — new peer, requesting pairing", slot->conn_handle);
+          ble_gap_security_initiate(slot->conn_handle);
+        }
         if (count_active_slots() < CONFIG_BT_NIMBLE_MAX_CONNECTIONS)
           start_advertising();
       } else {
