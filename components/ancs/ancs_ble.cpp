@@ -417,7 +417,19 @@ static int gap_event_cb(struct ble_gap_event *event, void *arg) {
           already_bonded = (ble_store_read_peer_sec(&bond_key, &bond_val) == 0);
         }
         if (already_bonded) {
-          ESP_LOGI(TAG, "connected handle=%u — bonded peer, waiting for LTK encryption", slot->conn_handle);
+          if (connect_desc.sec_state.encrypted) {
+            // NimBLE dispatched ENC_CHANGE before CONNECT (iOS fast-reconnect
+            // quirk). The slot didn't exist yet so it was ignored. Start
+            // discovery now instead of waiting for an enc_change that won't come.
+            ESP_LOGI(TAG, "connected handle=%u — already encrypted, starting ANCS discovery", slot->conn_handle);
+            int rc = ble_gattc_disc_all_svcs(slot->conn_handle, on_disc_svc, NULL);
+            if (rc != 0) {
+              ESP_LOGE(TAG, "ble_gattc_disc_all_svcs failed rc=%d — terminating", rc);
+              ble_gap_terminate(slot->conn_handle, 0x13);
+            }
+          } else {
+            ESP_LOGI(TAG, "connected handle=%u — bonded peer, waiting for LTK encryption", slot->conn_handle);
+          }
         } else {
           ESP_LOGI(TAG, "connected handle=%u — new peer, requesting pairing", slot->conn_handle);
           ble_gap_security_initiate(slot->conn_handle);
