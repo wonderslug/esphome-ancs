@@ -465,7 +465,7 @@ static int gap_event_cb(struct ble_gap_event *event, void *arg) {
       uint16_t enc_handle = event->enc_change.conn_handle;
       ConnState *slot = find_slot(enc_handle);
       if (!slot) {
-        ESP_LOGW(TAG, "enc_change for unknown handle=%u — ignoring", enc_handle);
+        ESP_LOGD(TAG, "enc_change for unknown handle=%u — ignoring", enc_handle);
         return 0;
       }
       if (event->enc_change.status == 0) {
