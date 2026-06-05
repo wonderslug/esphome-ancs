@@ -155,8 +155,8 @@ three HA events over the ESPHome native API:
 
 | Event | When it fires | Payload fields |
 |---|---|---|
-| `esphome.ancs_incoming_call` | An incoming call notification has its attributes available | `uid`, `caller`, `app_id`, `device_name`, `iphone_name` |
-| `esphome.ancs_notification` | Any non-call notification has its attributes available | `uid`, `category`, `app_id`, `title`, `subtitle`, `message`, `device_name`, `iphone_name` |
+| `esphome.ancs_incoming_call` | An incoming call notification has its attributes available | `uid`, `caller`, `app_id`, `date`, `device_name`, `iphone_name` |
+| `esphome.ancs_notification` | Any non-call notification has its attributes available | `uid`, `category`, `app_id`, `title`, `subtitle`, `message`, `date`, `device_name`, `iphone_name` |
 | `esphome.ancs_call_ended` | An incoming call is declined or answered | `uid`, `device_name`, `iphone_name` |
 
 ### When to use it
@@ -216,6 +216,18 @@ will always be non-empty in practice.
 
 If you have more than one ANCS device paired, `iphone_name` identifies which phone
 sent the notification (while `device_name` identifies which ESP32 fired the event).
+
+### `date` field
+
+`date` contains the timestamp iOS assigned to the notification, in ISO 8601 format
+`YYYY-MM-DDTHH:MM:SS` (e.g. `2026-06-04T14:30:22`). ANCS provides local device time without
+a timezone offset. This reflects when the notification was *generated* on the iOS side,
+not when it was delivered over BLE — so notifications queued while the phone was out of range
+will carry their original creation time once they sync.
+
+The field is present in both `esphome.ancs_incoming_call` and `esphome.ancs_notification` events.
+It is an empty string only if the ANCS Date attribute was not included in `fetch_attributes`,
+which is not the case for this package (it fetches `date` by default).
 
 ### `uid` field
 

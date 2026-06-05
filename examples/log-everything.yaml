@@ -36,7 +36,7 @@ ancs:
 
   # Fetch the full attribute set so on_notification_attributes can log them all.
   auto_fetch_attributes: true
-  fetch_attributes: [app_id, title, subtitle, message]
+  fetch_attributes: [app_id, title, subtitle, message, date]
 
   on_connect:
     - logger.log:
@@ -72,7 +72,7 @@ ancs:
   # Fires after the GATT roundtrip, once the requested text has arrived.
   on_notification_attributes:
     - logger.log:
-        format: "ATTRS     uid=%u  dev=%-16s  cat=%-16s  app=%s  title=%s  sub=%s  msg=%s"
+        format: "ATTRS     uid=%u  dev=%-16s  cat=%-16s  app=%s  title=%s  sub=%s  msg=%s  date=%s"
         tag: "ancs.demo"
         args:
           - uid
@@ -82,6 +82,7 @@ ancs:
           - title.c_str()
           - subtitle.c_str()
           - message.c_str()
+          - date.c_str()
 
   # Fires when an existing notification is updated (e.g. call accepted elsewhere).
   on_notification_modified:

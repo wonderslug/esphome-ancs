@@ -2,9 +2,9 @@
 #
 # Fires three HA events when iPhone notifications arrive via ANCS:
 #
-#   esphome.ancs_incoming_call  — incoming call; payload: uid, caller, app_id, device_name, iphone_name
+#   esphome.ancs_incoming_call  — incoming call; payload: uid, caller, app_id, date, device_name, iphone_name
 #   esphome.ancs_notification   — all other categories; payload: uid, category, app_id,
-#                                 title, subtitle, message, device_name, iphone_name
+#                                 title, subtitle, message, date, device_name, iphone_name
 #   esphome.ancs_call_ended     — call declined or answered; payload: uid, device_name, iphone_name
 #
 # Standalone package — no other packages required. Include it and add your connectivity config.
@@ -47,10 +47,10 @@ ancs:
   id: my_ancs
   name: "${ancs_name}"
   auto_fetch_attributes: true
-  fetch_attributes: [app_id, title, subtitle, message]
+  fetch_attributes: [app_id, title, subtitle, message, date]
   on_notification_attributes:
     - logger.log:
-        format: "ATTRS     uid=%u  dev=%-16s  cat=%-16s  app=%s  title=%s  sub=%s  msg=%s"
+        format: "ATTRS     uid=%u  dev=%-16s  cat=%-16s  app=%s  title=%s  sub=%s  msg=%s  date=%s"
         tag: "ancs.notification_attrs"
         args:
           - uid
@@ -60,6 +60,7 @@ ancs:
           - title.c_str()
           - subtitle.c_str()
           - message.c_str()
+          - date.c_str()
     - if:
         condition:
           lambda: 'return category == "incoming_call";'
@@ -70,6 +71,7 @@ ancs:
                 uid: !lambda 'return std::to_string(uid);'
                 caller: !lambda 'return title;'
                 app_id: !lambda 'return app_id;'
+                date: !lambda 'return date;'
                 device_name: !lambda 'return std::string(App.get_name());'
                 iphone_name: !lambda 'return device_name;'
         else:
@@ -82,6 +84,7 @@ ancs:
                 title: !lambda 'return title;'
                 subtitle: !lambda 'return subtitle;'
                 message: !lambda 'return message;'
+                date: !lambda 'return date;'
                 device_name: !lambda 'return std::string(App.get_name());'
                 iphone_name: !lambda 'return device_name;'
 

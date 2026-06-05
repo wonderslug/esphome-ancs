@@ -106,8 +106,8 @@ Three events are available:
 
 | Event | When | Key payload fields |
 |---|---|---|
-| `esphome.ancs_incoming_call` | Incoming call arrives | `caller`, `app_id`, `iphone_name`, `device_name` |
-| `esphome.ancs_notification` | Any other notification | `category`, `title`, `message`, `app_id`, `iphone_name`, `device_name` |
+| `esphome.ancs_incoming_call` | Incoming call arrives | `caller`, `app_id`, `date`, `iphone_name`, `device_name` |
+| `esphome.ancs_notification` | Any other notification | `category`, `title`, `message`, `app_id`, `date`, `iphone_name`, `device_name` |
 | `esphome.ancs_call_ended` | Call answered or declined | `uid`, `iphone_name`, `device_name` |
 
 See [docs/packages.md](packages.md) for all payload fields, more automation examples (TTS, filtering by app ID, filtering by category), and how to add HA entity sensors alongside events.

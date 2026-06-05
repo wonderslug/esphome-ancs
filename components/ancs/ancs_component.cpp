@@ -96,6 +96,12 @@ void AncsComponent::loop() {
         break;
 
       case BleEventType::ATTRIBUTES:
+        if (ev.date.empty()) {
+          ESP_LOGI(TAG, "Attributes uid=%u app=%s title=%s", ev.uid, ev.app_id.c_str(), ev.title.c_str());
+        } else {
+          ESP_LOGI(TAG, "Attributes uid=%u app=%s title=%s date=%s", ev.uid, ev.app_id.c_str(), ev.title.c_str(),
+                   ev.date.c_str());
+        }
 #ifdef USE_TEXT_SENSOR
         if (last_title_ts_)
           last_title_ts_->publish_state(ev.title);
@@ -106,7 +112,7 @@ void AncsComponent::loop() {
         if (last_caller_ts_ && ev.category == protocol::Category::INCOMING_CALL)
           last_caller_ts_->publish_state(ev.title);
 #endif
-        on_attributes_.call(ev.uid, cat, ev.app_id, ev.title, ev.subtitle, ev.message, ev.device_name);
+        on_attributes_.call(ev.uid, cat, ev.app_id, ev.title, ev.subtitle, ev.message, ev.device_name, ev.date);
         break;
     }
   }
