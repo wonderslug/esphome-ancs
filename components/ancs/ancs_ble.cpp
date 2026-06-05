@@ -702,6 +702,14 @@ static void start_advertising() {
   adv_params.disc_mode = BLE_GAP_DISC_MODE_GEN;
 
   int rc = ble_gap_adv_start(s_own_addr_type, NULL, BLE_HS_FOREVER, &adv_params, gap_event_cb, NULL);
+  if (rc == BLE_HS_EBUSY) {
+    // Advertising is already active or NimBLE has a procedure pending (e.g. a
+    // failed inbound connection attempt paused advertising but the GAP layer
+    // hasn't fully released it yet). The desired state — advertising — is
+    // already in effect; ensure the solicited-UUID override gets re-applied.
+    s_adv_override_pending = true;
+    return;
+  }
   if (rc != 0) {
     ESP_LOGE(TAG, "ble_gap_adv_start failed rc=%d", rc);
     return;
