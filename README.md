@@ -196,7 +196,7 @@ The hub block configures the BLE ANCS peripheral.  Add one block at the top leve
 | `fetch_attributes` | list | `[app_id, title, message]` | Which attributes to retrieve. Subset of `[app_id, title, subtitle, message]`. |
 | `manufacturer` | string | _(optional)_ | BLE Device Information Service manufacturer string. |
 | `model` | string | _(optional)_ | BLE Device Information Service model string. |
-| `max_bonds` | int (1–9) | `3` | Maximum number of bonded iPhones stored in NVS. Known devices auto-reconnect without re-pairing. |
+| `max_connections` | int (1–7) | `3` | Maximum number of iPhones that can be simultaneously connected and bonded. Drives both the runtime connection slot count and the NVS bond storage. All paired iPhones auto-reconnect without re-pairing. |
 | `nimble_host_task_stack_size` | int (4096–32768) | `8192` | Stack size (bytes) for the NimBLE host task. The ESP-IDF default of 4096 overflows during LE Secure Connections pairing and reboots the device (`stack overflow in task nimble_host`); leave at the default unless a custom build still overflows. |
 
 ### Triggers
@@ -286,7 +286,7 @@ ancs:
   name: "ESPHome-ANCS"
   auto_fetch_attributes: true
   fetch_attributes: [app_id, title, message]
-  max_bonds: 3
+  max_connections: 3
   on_notification_added:
     - logger.log:
         format: "ADDED uid=%u dev=%s cat=%s count=%u"
@@ -375,7 +375,7 @@ esphome compile tests/test-ancs.yaml
 ## Known Limitations
 
 - **Focus / Do Not Disturb**: iOS can suppress ANCS notifications at the OS level when Focus modes are active. There is no workaround from the ESP32 side.
-- **One active connection**: only one iPhone can be connected at a time. Up to `max_bonds` paired iPhones are stored so a known device auto-reconnects when in range.
+- **Simultaneous connections**: up to `max_connections` iPhones (default 3, max 7) can be connected and receiving notifications at the same time. All paired iPhones auto-reconnect after an ESP32 reset.
 - **Resolvable private addresses**: iOS uses rotating Bluetooth MAC addresses. The component identifies paired iPhones via the bonded IRK (identity resolving key) stored in NVS, not by MAC address.
 - **No Bluedroid coexistence**: because the component takes ownership of the BLE radio via NimBLE/ESP-IDF, it cannot run alongside `bluetooth_proxy`, `esp32_ble_tracker`, or `ble_client`.
 

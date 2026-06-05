@@ -42,7 +42,6 @@ CONF_ON_NOTIFICATION_ATTRIBUTES = "on_notification_attributes"
 
 CONF_AUTO_FETCH_ATTRIBUTES = "auto_fetch_attributes"
 CONF_FETCH_ATTRIBUTES = "fetch_attributes"
-CONF_MAX_BONDS = "max_bonds"
 CONF_MAX_CONNECTIONS = "max_connections"
 CONF_MANUFACTURER = "manufacturer"
 CONF_MODEL = "model"
@@ -60,7 +59,6 @@ CONFIG_SCHEMA = cv.Schema(
         ),
         cv.Optional(CONF_MANUFACTURER, default="ESPHome"): cv.All(cv.string, cv.Length(max=20)),
         cv.Optional(CONF_MODEL, default="ANCS Node"): cv.All(cv.string, cv.Length(max=20)),
-        cv.Optional(CONF_MAX_BONDS, default=3): cv.int_range(min=1, max=9),
         cv.Optional(CONF_MAX_CONNECTIONS, default=3): cv.int_range(min=1, max=7),
         # Stack size (bytes) for the NimBLE host task. LE Secure Connections runs
         # P-256 ECDH key generation on this task, and all of our GAP/GATT callbacks
@@ -118,7 +116,6 @@ async def to_code(config):
     await cg.register_component(var, config)
     cg.add(var.set_device_name(config[CONF_NAME]))
     cg.add(var.set_auto_fetch(config[CONF_AUTO_FETCH_ATTRIBUTES]))
-    cg.add(var.set_max_bonds(config[CONF_MAX_BONDS]))
     cg.add(var.set_manufacturer(config[CONF_MANUFACTURER]))
     cg.add(var.set_model(config[CONF_MODEL]))
     for attr in config[CONF_FETCH_ATTRIBUTES]:
@@ -192,7 +189,7 @@ async def to_code(config):
         ("CONFIG_BT_NIMBLE_NVS_PERSIST", True),
     ]:
         add_idf_sdkconfig_option(opt, val)
-    add_idf_sdkconfig_option("CONFIG_BT_NIMBLE_MAX_BONDS", config[CONF_MAX_BONDS])
+    add_idf_sdkconfig_option("CONFIG_BT_NIMBLE_MAX_BONDS", config[CONF_MAX_CONNECTIONS])
     add_idf_sdkconfig_option("CONFIG_BT_NIMBLE_MAX_CONNECTIONS", config[CONF_MAX_CONNECTIONS])
     add_idf_sdkconfig_option("CONFIG_BTDM_CTRL_BLE_MAX_CONN", config[CONF_MAX_CONNECTIONS])
     add_idf_sdkconfig_option("CONFIG_BT_CTRL_BLE_MAX_ACT", config[CONF_MAX_CONNECTIONS])

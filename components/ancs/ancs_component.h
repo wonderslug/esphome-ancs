@@ -28,7 +28,6 @@ class AncsComponent : public Component {
 
   void set_device_name(const std::string &n) { device_name_ = n; }
   void set_auto_fetch(bool b) { auto_fetch_ = b; }
-  void set_max_bonds(uint8_t n) { max_bonds_ = n; }
   void set_manufacturer(const std::string &m) { manufacturer_ = m; }
   void set_model(const std::string &m) { model_ = m; }
   void add_fetch_attribute(protocol::AttributeId a) { fetch_attrs_.push_back(a); }
@@ -79,7 +78,6 @@ class AncsComponent : public Component {
   std::string manufacturer_{"ESPHome"};
   std::string model_{"ANCS Node"};
   bool auto_fetch_{true};
-  uint8_t max_bonds_{3};
   std::vector<protocol::AttributeId> fetch_attrs_;
   uint8_t call_active_count_{0};
   uint8_t connected_count_{0};

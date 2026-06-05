@@ -114,7 +114,7 @@ void AncsComponent::dump_config() {
   ESP_LOGCONFIG(TAG, "ANCS:");
   ESP_LOGCONFIG(TAG, "  Device name: %s", device_name_.c_str());
   ESP_LOGCONFIG(TAG, "  Auto fetch attributes: %s", YESNO(auto_fetch_));
-  ESP_LOGCONFIG(TAG, "  Max bonds: %u", max_bonds_);
+  ESP_LOGCONFIG(TAG, "  Max connections: %d", CONFIG_BT_NIMBLE_MAX_CONNECTIONS);
 }
 
 }  // namespace ancs

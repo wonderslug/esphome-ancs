@@ -186,8 +186,8 @@ be paired individually:
    close nRF Connect, then repeat for the next.
 3. Once all nodes are paired, iOS reconnects to all of them automatically.
 
-Each node has its own `max_bonds` NVS store (default 3). This means each
-node can remember up to 3 different iPhones.
+Each node has its own bond store sized by `max_connections` (default 3). This means each
+node can simultaneously connect to and remember up to 3 different iPhones.
 
 ---
 
