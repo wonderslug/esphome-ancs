@@ -44,9 +44,9 @@ All use `framework: esp-idf` and the `external_components` local path.
 
 | File | What it does |
 |---|---|
-| [d1-mini-blink-on-call.yaml](../examples/d1-mini-blink-on-call.yaml) | 3-blink groups while a call is ringing; stops on answer/decline |
-| [d1-mini-blink-on-imessage.yaml](../examples/d1-mini-blink-on-imessage.yaml) | 5 slow blinks when an iMessage/SMS arrives (filtered by `app_id`) |
-| [d1-mini-call-and-missed-alerts.yaml](../examples/d1-mini-call-and-missed-alerts.yaml) | Fast blink on incoming call + slow PWM breathe on missed call or voicemail |
+| [blink-on-call.yaml](../examples/blink-on-call.yaml) | 3-blink groups while a call is ringing; stops on answer/decline |
+| [blink-on-imessage.yaml](../examples/blink-on-imessage.yaml) | 5 slow blinks when an iMessage/SMS arrives (filtered by `app_id`) |
+| [call-and-missed-alerts.yaml](../examples/call-and-missed-alerts.yaml) | Fast blink on incoming call + slow PWM breathe on missed call or voicemail |
 
 ---
 

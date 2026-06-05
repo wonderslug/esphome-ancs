@@ -36,11 +36,11 @@ This is an ESPHome external component that turns an ESP32 into an Apple Notifica
 | [Category reference](docs/categories/README.md) | All ANCS notification categories, trigger variables, event flags, common patterns |
 | [Packages reference](docs/packages.md) | All three packages — what each provides, requirements, minimal configs, and HA event payloads |
 
-**Example configurations** (ready to flash on a WEMOS D1 Mini ESP32):
+**Example configurations:**
 
-- [Blink on incoming call](examples/d1-mini-blink-on-call.yaml)
-- [Blink on iMessage](examples/d1-mini-blink-on-imessage.yaml)
-- [Call + missed-call / voicemail alerts](examples/d1-mini-call-and-missed-alerts.yaml)
+- [Blink on incoming call](examples/blink-on-call.yaml)
+- [Blink on iMessage](examples/blink-on-imessage.yaml)
+- [Call + missed-call / voicemail alerts](examples/call-and-missed-alerts.yaml)
 
 ---
 
@@ -196,7 +196,7 @@ The hub block configures the BLE ANCS peripheral.  Add one block at the top leve
 | `fetch_attributes` | list | `[app_id, title, message]` | Which attributes to retrieve. Subset of `[app_id, title, subtitle, message]`. |
 | `manufacturer` | string | _(optional)_ | BLE Device Information Service manufacturer string. |
 | `model` | string | _(optional)_ | BLE Device Information Service model string. |
-| `max_bonds` | int (1–9) | `3` | Maximum number of bonded iPhones stored in NVS. Known devices auto-reconnect without re-pairing. |
+| `max_connections` | int (1–7) | `3` | Maximum number of iPhones that can be simultaneously connected and bonded. Drives both the runtime connection slot count and the NVS bond storage. All paired iPhones auto-reconnect without re-pairing. |
 | `nimble_host_task_stack_size` | int (4096–32768) | `8192` | Stack size (bytes) for the NimBLE host task. The ESP-IDF default of 4096 overflows during LE Secure Connections pairing and reboots the device (`stack overflow in task nimble_host`); leave at the default unless a custom build still overflows. |
 
 ### Triggers
@@ -205,12 +205,12 @@ All triggers are defined inside the `ancs:` hub block.
 
 | Trigger | Variables | Notes |
 |---------|-----------|-------|
-| `on_connect` | _(none)_ | Fires when an iPhone establishes an encrypted ANCS connection. |
-| `on_disconnect` | _(none)_ | Fires when the connection drops. |
-| `on_notification_added` | `uid` (uint32), `category` (std::string), `category_count` (uint8), `flags` (uint8) | Fires immediately when a notification appears — before attribute text is fetched. Use this to react fast (e.g., start blinking on `category == "incoming_call"`). |
-| `on_notification_attributes` | `uid`, `category`, `app_id`, `title`, `subtitle`, `message` (all std::string) | Fires after a GATT round-trip once the requested attribute text has arrived. Use this to display caller name, message body, etc. |
-| `on_notification_removed` | `uid` (uint32), `category` (std::string) | Fires when the notification is dismissed or acknowledged on the iPhone. |
-| `on_notification_modified` | `uid` (uint32), `category` (std::string), `flags` (uint8) | Fires when an existing notification is updated (e.g., call accepted on another device). |
+| `on_connect` | `device_name` (std::string) | Fires when an iPhone establishes an encrypted ANCS connection. `device_name` is the BLE display name of the phone. |
+| `on_disconnect` | `device_name` (std::string) | Fires when the connection drops. |
+| `on_notification_added` | `uid` (uint32), `category` (std::string), `category_count` (uint8), `flags` (uint8), `device_name` (std::string) | Fires immediately when a notification appears — before attribute text is fetched. Use this to react fast (e.g., start blinking on `category == "incoming_call"`). |
+| `on_notification_attributes` | `uid`, `category`, `app_id`, `title`, `subtitle`, `message`, `device_name` (all std::string) | Fires after a GATT round-trip once the requested attribute text has arrived. Use this to display caller name, message body, etc. |
+| `on_notification_removed` | `uid` (uint32), `category` (std::string), `device_name` (std::string) | Fires when the notification is dismissed or acknowledged on the iPhone. |
+| `on_notification_modified` | `uid` (uint32), `category` (std::string), `flags` (uint8), `device_name` (std::string) | Fires when an existing notification is updated (e.g., call accepted on another device). |
 
 **Added vs. Attributes split**: `on_notification_added` carries only the notification header and fires the moment the notification arrives — ideal for low-latency reactions like starting a light flash. `on_notification_attributes` carries caller/title/message text but requires one GATT round-trip, so it arrives a fraction of a second later.
 
@@ -286,11 +286,11 @@ ancs:
   name: "ESPHome-ANCS"
   auto_fetch_attributes: true
   fetch_attributes: [app_id, title, message]
-  max_bonds: 3
+  max_connections: 3
   on_notification_added:
     - logger.log:
-        format: "ADDED uid=%u cat=%s count=%u"
-        args: [uid, category.c_str(), category_count]
+        format: "ADDED uid=%u dev=%s cat=%s count=%u"
+        args: [uid, device_name.c_str(), category.c_str(), category_count]
     - if:
         condition:
           lambda: 'return category == "incoming_call";'
@@ -300,21 +300,25 @@ ancs:
               flash_length: 60s
   on_notification_attributes:
     - logger.log:
-        format: "ATTRS uid=%u title=%s msg=%s"
-        args: [uid, title.c_str(), message.c_str()]
+        format: "ATTRS uid=%u dev=%s title=%s msg=%s"
+        args: [uid, device_name.c_str(), title.c_str(), message.c_str()]
   on_notification_removed:
     - logger.log:
-        format: "REMOVED uid=%u cat=%s"
-        args: [uid, category.c_str()]
+        format: "REMOVED uid=%u dev=%s cat=%s"
+        args: [uid, device_name.c_str(), category.c_str()]
     - if:
         condition:
           lambda: 'return category == "incoming_call";'
         then:
           - light.turn_off: alert_light
   on_connect:
-    - logger.log: "iPhone connected"
+    - logger.log:
+        format: "iPhone connected: %s"
+        args: [device_name.c_str()]
   on_disconnect:
-    - logger.log: "iPhone disconnected"
+    - logger.log:
+        format: "iPhone disconnected: %s"
+        args: [device_name.c_str()]
 
 output:
   - platform: gpio
@@ -371,7 +375,7 @@ esphome compile tests/test-ancs.yaml
 ## Known Limitations
 
 - **Focus / Do Not Disturb**: iOS can suppress ANCS notifications at the OS level when Focus modes are active. There is no workaround from the ESP32 side.
-- **One active connection**: only one iPhone can be connected at a time. Up to `max_bonds` paired iPhones are stored so a known device auto-reconnects when in range.
+- **Simultaneous connections**: up to `max_connections` iPhones (default 3, max 7) can be connected and receiving notifications at the same time. All paired iPhones auto-reconnect after an ESP32 reset.
 - **Resolvable private addresses**: iOS uses rotating Bluetooth MAC addresses. The component identifies paired iPhones via the bonded IRK (identity resolving key) stored in NVS, not by MAC address.
 - **No Bluedroid coexistence**: because the component takes ownership of the BLE radio via NimBLE/ESP-IDF, it cannot run alongside `bluetooth_proxy`, `esp32_ble_tracker`, or `ble_client`.
 

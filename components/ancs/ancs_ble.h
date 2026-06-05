@@ -51,7 +51,7 @@ class AncsBle {
   // Actions (safe to call from the ESPHome loop task).
   void clear_bonds_and_restart();
   void disconnect();
-  void request_attributes(uint32_t uid);
+  void request_attributes(uint32_t uid, const std::string &device_name = "");
 };
 
 }  // namespace ancs

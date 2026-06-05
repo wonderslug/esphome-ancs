@@ -50,10 +50,11 @@ ancs:
   fetch_attributes: [app_id, title, subtitle, message]
   on_notification_attributes:
     - logger.log:
-        format: "ATTRS     uid=%u  cat=%-16s  app=%s  title=%s  sub=%s  msg=%s"
+        format: "ATTRS     uid=%u  dev=%-16s  cat=%-16s  app=%s  title=%s  sub=%s  msg=%s"
         tag: "ancs.notification_attrs"
         args:
           - uid
+          - device_name.c_str()
           - category.c_str()
           - app_id.c_str()
           - title.c_str()
@@ -70,7 +71,7 @@ ancs:
                 caller: !lambda 'return title;'
                 app_id: !lambda 'return app_id;'
                 device_name: !lambda 'return std::string(App.get_name());'
-                iphone_name: !lambda 'return id(my_ancs).get_connected_device_name();'
+                iphone_name: !lambda 'return device_name;'
         else:
           - homeassistant.event:
               event: esphome.ancs_notification
@@ -82,15 +83,16 @@ ancs:
                 subtitle: !lambda 'return subtitle;'
                 message: !lambda 'return message;'
                 device_name: !lambda 'return std::string(App.get_name());'
-                iphone_name: !lambda 'return id(my_ancs).get_connected_device_name();'
+                iphone_name: !lambda 'return device_name;'
 
   # Only incoming_call removals fire an event; other notification removals are intentionally ignored.
   on_notification_removed:
     - logger.log:
-        format: "REMOVED   uid=%u  cat=%-16s"
+        format: "REMOVED   uid=%u  dev=%-16s  cat=%-16s"
         tag: "ancs.notification_removed"
         args:
           - uid
+          - device_name.c_str()
           - category.c_str()
     - if:
         condition:
@@ -101,4 +103,4 @@ ancs:
               data:
                 uid: !lambda 'return std::to_string(uid);'
                 device_name: !lambda 'return std::string(App.get_name());'
-                iphone_name: !lambda 'return id(my_ancs).get_connected_device_name();'
+                iphone_name: !lambda 'return device_name;'

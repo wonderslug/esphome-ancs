@@ -42,7 +42,7 @@ CONF_ON_NOTIFICATION_ATTRIBUTES = "on_notification_attributes"
 
 CONF_AUTO_FETCH_ATTRIBUTES = "auto_fetch_attributes"
 CONF_FETCH_ATTRIBUTES = "fetch_attributes"
-CONF_MAX_BONDS = "max_bonds"
+CONF_MAX_CONNECTIONS = "max_connections"
 CONF_MANUFACTURER = "manufacturer"
 CONF_MODEL = "model"
 CONF_NIMBLE_HOST_TASK_STACK_SIZE = "nimble_host_task_stack_size"
@@ -59,7 +59,7 @@ CONFIG_SCHEMA = cv.Schema(
         ),
         cv.Optional(CONF_MANUFACTURER, default="ESPHome"): cv.All(cv.string, cv.Length(max=20)),
         cv.Optional(CONF_MODEL, default="ANCS Node"): cv.All(cv.string, cv.Length(max=20)),
-        cv.Optional(CONF_MAX_BONDS, default=3): cv.int_range(min=1, max=9),
+        cv.Optional(CONF_MAX_CONNECTIONS, default=3): cv.int_range(min=1, max=7),
         # Stack size (bytes) for the NimBLE host task. LE Secure Connections runs
         # P-256 ECDH key generation on this task, and all of our GAP/GATT callbacks
         # (stack buffers + ESPHome logging) run on it too. The ESP-IDF default of
@@ -116,7 +116,6 @@ async def to_code(config):
     await cg.register_component(var, config)
     cg.add(var.set_device_name(config[CONF_NAME]))
     cg.add(var.set_auto_fetch(config[CONF_AUTO_FETCH_ATTRIBUTES]))
-    cg.add(var.set_max_bonds(config[CONF_MAX_BONDS]))
     cg.add(var.set_manufacturer(config[CONF_MANUFACTURER]))
     cg.add(var.set_model(config[CONF_MODEL]))
     for attr in config[CONF_FETCH_ATTRIBUTES]:
@@ -124,10 +123,10 @@ async def to_code(config):
 
     for conf in config.get(CONF_ON_CONNECT, []):
         trig = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
-        await automation.build_automation(trig, [], conf)
+        await automation.build_automation(trig, [(cg.std_string, "device_name")], conf)
     for conf in config.get(CONF_ON_DISCONNECT, []):
         trig = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
-        await automation.build_automation(trig, [], conf)
+        await automation.build_automation(trig, [(cg.std_string, "device_name")], conf)
     for conf in config.get(CONF_ON_NOTIFICATION_ADDED, []):
         trig = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
         await automation.build_automation(
@@ -137,6 +136,7 @@ async def to_code(config):
                 (cg.std_string, "category"),
                 (cg.uint8, "category_count"),
                 (cg.uint8, "flags"),
+                (cg.std_string, "device_name"),
             ],
             conf,
         )
@@ -144,12 +144,16 @@ async def to_code(config):
         trig = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
         await automation.build_automation(
             trig,
-            [(cg.uint32, "uid"), (cg.std_string, "category"), (cg.uint8, "flags")],
+            [(cg.uint32, "uid"), (cg.std_string, "category"), (cg.uint8, "flags"), (cg.std_string, "device_name")],
             conf,
         )
     for conf in config.get(CONF_ON_NOTIFICATION_REMOVED, []):
         trig = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
-        await automation.build_automation(trig, [(cg.uint32, "uid"), (cg.std_string, "category")], conf)
+        await automation.build_automation(
+            trig,
+            [(cg.uint32, "uid"), (cg.std_string, "category"), (cg.std_string, "device_name")],
+            conf,
+        )
     for conf in config.get(CONF_ON_NOTIFICATION_ATTRIBUTES, []):
         trig = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
         await automation.build_automation(
@@ -161,6 +165,7 @@ async def to_code(config):
                 (cg.std_string, "title"),
                 (cg.std_string, "subtitle"),
                 (cg.std_string, "message"),
+                (cg.std_string, "device_name"),
             ],
             conf,
         )
@@ -184,8 +189,11 @@ async def to_code(config):
         ("CONFIG_BT_NIMBLE_NVS_PERSIST", True),
     ]:
         add_idf_sdkconfig_option(opt, val)
-    add_idf_sdkconfig_option("CONFIG_BT_NIMBLE_MAX_BONDS", config[CONF_MAX_BONDS])
-    add_idf_sdkconfig_option("CONFIG_BT_NIMBLE_MAX_CCCDS", 8)
+    add_idf_sdkconfig_option("CONFIG_BT_NIMBLE_MAX_BONDS", config[CONF_MAX_CONNECTIONS])
+    add_idf_sdkconfig_option("CONFIG_BT_NIMBLE_MAX_CONNECTIONS", config[CONF_MAX_CONNECTIONS])
+    add_idf_sdkconfig_option("CONFIG_BTDM_CTRL_BLE_MAX_CONN", config[CONF_MAX_CONNECTIONS])
+    add_idf_sdkconfig_option("CONFIG_BT_CTRL_BLE_MAX_ACT", config[CONF_MAX_CONNECTIONS])
+    add_idf_sdkconfig_option("CONFIG_BT_NIMBLE_MAX_CCCDS", 2 * config[CONF_MAX_CONNECTIONS] + 2)
     # Override the NimBLE host task stack (default 4096) to prevent the stack
     # overflow during LE Secure Connections pairing — see CONF_NIMBLE_HOST_TASK_STACK_SIZE.
     add_idf_sdkconfig_option("CONFIG_BT_NIMBLE_HOST_TASK_STACK_SIZE", config[CONF_NIMBLE_HOST_TASK_STACK_SIZE])
@@ -213,6 +221,7 @@ async def disconnect_to_code(config, action_id, template_arg, args):
         {
             cv.GenerateID(): cv.use_id(AncsComponent),
             cv.Required("uid"): cv.templatable(cv.uint32_t),
+            cv.Optional("device_name"): cv.templatable(cv.string),
         }
     ),
     synchronous=True,
@@ -222,4 +231,7 @@ async def request_attributes_to_code(config, action_id, template_arg, args):
     var = cg.new_Pvariable(action_id, template_arg, parent)
     template_ = await cg.templatable(config["uid"], args, cg.uint32)
     cg.add(var.set_uid(template_))
+    if "device_name" in config:
+        template_ = await cg.templatable(config["device_name"], args, cg.std_string)
+        cg.add(var.set_device_name(template_))
     return var

@@ -40,23 +40,26 @@ ancs:
 
   on_connect:
     - logger.log:
-        format: "CONNECT  iPhone connected"
+        format: "CONNECT    dev=%s"
         tag: "ancs.demo"
+        args: [device_name.c_str()]
 
   on_disconnect:
     - logger.log:
-        format: "DISCONNECT  iPhone disconnected"
+        format: "DISCONNECT dev=%s"
         tag: "ancs.demo"
+        args: [device_name.c_str()]
 
   # Fires instantly from the 8-byte notification header — no GATT roundtrip.
   # The flag bits are decoded inline so silent/important/pre-existing/action
   # notifications are visible in the log.
   on_notification_added:
     - logger.log:
-        format: "ADDED     uid=%u  cat=%-16s  count=%u  flags=0x%02X [%s%s%s%s%s]"
+        format: "ADDED     uid=%u  dev=%-16s  cat=%-16s  count=%u  flags=0x%02X [%s%s%s%s%s]"
         tag: "ancs.demo"
         args:
           - uid
+          - device_name.c_str()
           - category.c_str()
           - category_count
           - flags
@@ -69,10 +72,11 @@ ancs:
   # Fires after the GATT roundtrip, once the requested text has arrived.
   on_notification_attributes:
     - logger.log:
-        format: "ATTRS     uid=%u  cat=%-16s  app=%s  title=%s  sub=%s  msg=%s"
+        format: "ATTRS     uid=%u  dev=%-16s  cat=%-16s  app=%s  title=%s  sub=%s  msg=%s"
         tag: "ancs.demo"
         args:
           - uid
+          - device_name.c_str()
           - category.c_str()
           - app_id.c_str()
           - title.c_str()
@@ -82,16 +86,16 @@ ancs:
   # Fires when an existing notification is updated (e.g. call accepted elsewhere).
   on_notification_modified:
     - logger.log:
-        format: "MODIFIED  uid=%u  cat=%-16s  flags=0x%02X"
+        format: "MODIFIED  uid=%u  dev=%-16s  cat=%-16s  flags=0x%02X"
         tag: "ancs.demo"
-        args: [uid, category.c_str(), flags]
+        args: [uid, device_name.c_str(), category.c_str(), flags]
 
   # Fires when the notification is dismissed/acknowledged on the iPhone.
   on_notification_removed:
     - logger.log:
-        format: "REMOVED   uid=%u  cat=%-16s"
+        format: "REMOVED   uid=%u  dev=%-16s  cat=%-16s"
         tag: "ancs.demo"
-        args: [uid, category.c_str()]
+        args: [uid, device_name.c_str(), category.c_str()]
 
 # ─── Sensors ─────────────────────────────────────────────────────────────────
 # Mirror the latest event into entities too, so it's all visible at a glance

@@ -64,8 +64,8 @@ ancs:
   name: "My ANCS"
   on_notification_added:
     - logger.log:
-        format: "Notification: category=%s uid=%d"
-        args: [category.c_str(), uid]
+        format: "Notification: dev=%s category=%s uid=%d"
+        args: [device_name.c_str(), category.c_str(), uid]
 ```
 
 ---
@@ -92,7 +92,7 @@ or inherit from `ancs.yaml`:
   - `last_app_id` → HA entity **"[friendly_name] Last App ID"** — the bundle ID of the
     app that sent the most recent notification.
 - **Buttons** — **"[friendly_name] Clear Bonds"** (removes all BLE bonds and restarts
-  advertising) and **"[friendly_name] Disconnect iPhone"** (drops the current BLE link).
+  advertising) and **"[friendly_name] Disconnect iPhones"** (drops all active BLE links; phones reconnect automatically).
 
 All entity names are prefixed with `${friendly_name}` so they appear cleanly in
 Home Assistant. The internal sensor IDs (e.g. `last_title`) differ from the HA-facing

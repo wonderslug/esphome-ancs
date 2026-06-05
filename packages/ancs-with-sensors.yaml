@@ -64,9 +64,9 @@ button:
     on_press:
       - ancs.clear_bonds: my_ancs
 
-  # Drop the current BLE link; the phone will typically reconnect on its own.
+  # Drop all active BLE links; phones will typically reconnect on their own.
   - platform: template
-    name: "${friendly_name} Disconnect iPhone"
+    name: "${friendly_name} Disconnect iPhones"
     icon: "mdi:bluetooth-off"
     entity_category: config
     on_press:
