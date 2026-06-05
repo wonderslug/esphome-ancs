@@ -21,7 +21,7 @@ jobs:
       # The ESP-IDF toolchain (~500 MB) lives in ~/.platformio.
       # Keyed to the ESPHome version so a version bump refreshes the cache.
       - name: Cache PlatformIO / ESP-IDF toolchain
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.platformio
           key: pio-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
@@ -30,7 +30,7 @@ jobs:
       # Keyed to the component source + test YAML so any code change triggers
       # a rebuild while unchanged runs stay fast (~2 min vs ~15 min cold).
       - name: Cache ESPHome build artifacts
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: tests/.esphome
           key: esphome-build-${{ runner.os }}-${{ hashFiles('components/ancs/**', 'tests/test-ancs.yaml') }}
