@@ -103,11 +103,6 @@ static uint16_t s_uid_route_idx{0};
 // is successfully applied from the main-loop task.
 static volatile bool s_adv_override_pending = false;
 
-// Boot-time directed reconnect cycle: populated in on_sync() from NVS bonds,
-// consumed one-per-connection in start_advertising_smart().
-static ble_addr_t s_reconnect_peers[CONFIG_BT_NIMBLE_MAX_CONNECTIONS]{};
-static int        s_reconnect_count{0};
-static int        s_reconnect_idx{0};
 
 // Push a BleEvent onto the queue (called from the NimBLE host task).
 // Heap-allocates so the std::strings survive the queue; pop_event takes ownership.
@@ -321,7 +316,7 @@ static const struct ble_gatt_svc_def s_dis_svcs[] = {
 // Forward declarations
 // ---------------------------------------------------------------------------
 static void start_advertising();
-static void start_advertising_smart();
+
 static void handle_notification_source(const uint8_t *buf, uint16_t len, ConnState *slot);
 static void handle_data_source(const uint8_t *buf, uint16_t len, ConnState *slot);
 static int on_disc_svc(uint16_t conn_handle, const struct ble_gatt_error *error, const struct ble_gatt_svc *svc,
@@ -329,6 +324,7 @@ static int on_disc_svc(uint16_t conn_handle, const struct ble_gatt_error *error,
 static int on_disc_chr(uint16_t conn_handle, const struct ble_gatt_error *error, const struct ble_gatt_chr *chr,
                        void *arg);
 static void write_cccd_enable(uint16_t conn_handle, uint16_t val_handle);
+static void start_advertising();
 
 // ---------------------------------------------------------------------------
 // read_device_name_cb — fires after reading the iPhone's GAP Device Name
@@ -404,11 +400,10 @@ static int gap_event_cb(struct ble_gap_event *event, void *arg) {
         ESP_LOGI(TAG, "connected handle=%u — initiating security", slot->conn_handle);
         ble_gap_security_initiate(slot->conn_handle);
         if (count_active_slots() < CONFIG_BT_NIMBLE_MAX_CONNECTIONS)
-          start_advertising_smart();
+          start_advertising();
       } else {
-        // Connect failed or directed-adv timed out — advance the reconnect cycle.
         ESP_LOGW(TAG, "connect failed status=%d", event->connect.status);
-        start_advertising_smart();
+        start_advertising();
       }
       return 0;
 
@@ -428,8 +423,7 @@ static int gap_event_cb(struct ble_gap_event *event, void *arg) {
     }
 
     case BLE_GAP_EVENT_ADV_COMPLETE:
-      // Advertising ended without a connection (timeout). Advance the reconnect cycle.
-      start_advertising_smart();
+      start_advertising();
       return 0;
 
     case BLE_GAP_EVENT_ENC_CHANGE: {
@@ -731,29 +725,6 @@ static void start_advertising() {
   ESP_LOGI(TAG, "advertising started — solicited-UUID override pending");
 }
 
-// Boot-time directed reconnect cycle. On each call, direct-advertises to the
-// next stored bond (3 s timeout). If all bonds have been tried, or none were
-// stored, falls back to normal undirected solicited-UUID advertising so new
-// phones can pair and already-connected phones can reconnect after a drop.
-static void start_advertising_smart() {
-  if (ble_gap_adv_active())
-    return;
-
-  while (s_reconnect_idx < s_reconnect_count) {
-    ble_addr_t peer = s_reconnect_peers[s_reconnect_idx++];
-    struct ble_gap_adv_params adv_params = {0};
-    adv_params.conn_mode = BLE_GAP_CONN_MODE_DIR;
-    int rc = ble_gap_adv_start(s_own_addr_type, &peer, 3000, &adv_params, gap_event_cb, NULL);
-    if (rc == 0) {
-      ESP_LOGI(TAG, "reconnect: directed adv to peer %d/%d", s_reconnect_idx, s_reconnect_count);
-      return;
-    }
-    ESP_LOGW(TAG, "reconnect: directed adv to peer %d failed rc=%d — skipping", s_reconnect_idx, rc);
-  }
-
-  start_advertising();
-}
-
 // ---------------------------------------------------------------------------
 // NimBLE host callbacks
 // ---------------------------------------------------------------------------
@@ -769,22 +740,7 @@ static void on_sync(void) {
     return;
   }
   ESP_LOGI(TAG, "NimBLE synced; own_addr_type=%u", s_own_addr_type);
-
-  // Enumerate NVS-persisted bonds for the directed reconnect cycle.
-  s_reconnect_count = 0;
-  s_reconnect_idx = 0;
-  for (int i = 0; s_reconnect_count < CONFIG_BT_NIMBLE_MAX_CONNECTIONS; i++) {
-    struct ble_store_key_sec key = {};
-    key.idx = i;
-    struct ble_store_value_sec val = {};
-    if (ble_store_read_peer_sec(&key, &val) != 0)
-      break;
-    s_reconnect_peers[s_reconnect_count++] = val.peer_addr;
-  }
-  if (s_reconnect_count > 0)
-    ESP_LOGI(TAG, "%d stored bond(s) — starting directed reconnect cycle", s_reconnect_count);
-
-  start_advertising_smart();
+  start_advertising();
 }
 
 static void host_task(void *param) {
