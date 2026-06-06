@@ -94,3 +94,4 @@ text:
   - platform: ancs
     ancs_id: my_ancs
     name: "Device Name Suffix"
+    entity_category: config

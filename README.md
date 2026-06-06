@@ -145,7 +145,7 @@ device is in range with no further use of nRF Connect required.
 1. Install **nRF Connect for Mobile** from the App Store.
 2. Flash the ESP32 and power it on. Watch the serial log for `NimBLE synced` and `advertising started`.
 3. Open nRF Connect → **SCANNER** tab → tap **SCAN**.
-4. Find your device by the BLE name shown for your device (your node name, e.g. `ancservice-a1b2c3`) and tap **CONNECT**.
+ 4. Find your device by the BLE name shown for your device (your node name, e.g. `ancservice-a1b2c3`) and tap **CONNECT**.
 5. The ESP32 receives the connection and immediately requests pairing. iOS shows a system dialog: **"ancservice-a1b2c3" Would Like to Pair With Your iPhone** → tap **Pair**.
 6. iOS shows a second dialog: **Allow "ancservice-a1b2c3" to Receive Your iPhone Notifications?** → tap **Allow**. This grants ANCS access.
 7. nRF Connect shows the GATT services being discovered. You will see the ANCS service appear (`7905F431-…`).
@@ -240,10 +240,15 @@ text:
   - platform: ancs
     ancs_id: my_ancs
     name: "Device Name Suffix"
+    entity_category: config
 ```
 
-The `web_server` UI shows the `name_suffix` entity as an editable text field, so
-the friendly name can be set directly on the device without Home Assistant.
+With `api:` enabled, this appears automatically in Home Assistant as a native
+`text` entity (an editable text field) — no template or helper needed. The
+`web_server` UI shows the same entity, so the friendly name can also be set
+directly on the device without Home Assistant. `entity_category: config` files it
+under the device's **Configuration** section rather than as a primary control;
+omit it to show it as a main control.
 
 ### Triggers
 
@@ -307,11 +312,17 @@ text:
   - platform: ancs
     ancs_id: my_ancs
     name: "Device Name Suffix"
+    entity_category: config   # optional: file under HA's Configuration section
 ```
+
+Exposed automatically as a native Home Assistant `text` entity over the ESPHome
+`api:` (read/write — editing it in HA calls `text.set_value`), and editable from
+the `web_server` UI and MQTT. No wrapping or template needed.
 
 | Entity key | Description |
 |------------|-------------|
 | `name_suffix` | Editable friendly suffix appended to (or replacing the MAC suffix of) the BLE advertised name — see [BLE advertised name](#ble-advertised-name). Persisted to NVS and applied live without a reboot or re-pairing. |
+| `entity_category` _(optional)_ | Standard ESPHome entity option; set to `config` to place the entity under the device's Configuration section in Home Assistant. |
 
 ### Actions
 
