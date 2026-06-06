@@ -26,7 +26,9 @@ class AncsComponent : public Component {
   void dump_config() override;
   float get_setup_priority() const override { return setup_priority::AFTER_WIFI; }
 
-  void set_device_name(const std::string &n) { device_name_ = n; }
+  void set_base_name(const std::string &n) { base_name_ = n; }
+  void set_name_configured(bool configured) { name_configured_ = configured; }
+  void set_name_suffix(const std::string &suffix);
   void set_auto_fetch(bool b) { auto_fetch_ = b; }
   void set_manufacturer(const std::string &m) { manufacturer_ = m; }
   void set_model(const std::string &m) { model_ = m; }
@@ -72,7 +74,13 @@ class AncsComponent : public Component {
 
  protected:
   AncsBle ble_;
-  std::string device_name_{"ESPHome-ANCS"};
+  std::string base_name_;
+  bool name_configured_{false};
+  std::string name_suffix_;
+  bool ble_initialized_{false};
+
+  // Resolve the effective advertised name from base/node name + suffix.
+  std::string resolve_name() const;
   std::string manufacturer_{"ESPHome"};
   std::string model_{"ANCS Node"};
   bool auto_fetch_{true};

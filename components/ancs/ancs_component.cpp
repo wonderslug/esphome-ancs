@@ -2,6 +2,9 @@
 // Copyright (c) 2026 Brian Towles
 
 #include "ancs_component.h"
+#include "ancs_name_resolver.h"
+#include "esphome/core/application.h"
+#include "esphome/core/helpers.h"
 #include "esphome/core/log.h"
 
 namespace esphome {
@@ -11,12 +14,13 @@ static const char *const TAG = "ancs";
 
 void AncsComponent::setup() {
   BleConfig cfg;
-  cfg.device_name = device_name_;
+  cfg.device_name = resolve_name();
   cfg.manufacturer = manufacturer_;
   cfg.model = model_;
   cfg.auto_fetch = auto_fetch_;
   cfg.fetch_attributes = fetch_attrs_;
   ble_.init(cfg);
+  ble_initialized_ = true;
 #ifdef USE_BINARY_SENSOR
   if (connected_bs_)
     connected_bs_->publish_initial_state(false);
@@ -119,9 +123,24 @@ void AncsComponent::loop() {
 }
 void AncsComponent::dump_config() {
   ESP_LOGCONFIG(TAG, "ANCS:");
-  ESP_LOGCONFIG(TAG, "  Device name: %s", device_name_.c_str());
+  ESP_LOGCONFIG(TAG, "  Advertised name: %s", resolve_name().c_str());
+  ESP_LOGCONFIG(TAG, "  Name source: %s", name_configured_ ? "configured" : "esphome node name");
   ESP_LOGCONFIG(TAG, "  Auto fetch attributes: %s", YESNO(auto_fetch_));
   ESP_LOGCONFIG(TAG, "  Max connections: %d", CONFIG_BT_NIMBLE_MAX_CONNECTIONS);
+}
+
+void AncsComponent::set_name_suffix(const std::string &suffix) {
+  name_suffix_ = suffix;
+  if (ble_initialized_)
+    ble_.set_advertised_name(resolve_name());
+}
+
+std::string AncsComponent::resolve_name() const {
+  // get_mac_address() returns 12 lowercase hex chars (no separators).
+  std::string mac6 = get_mac_address();
+  if (mac6.size() > 6)
+    mac6 = mac6.substr(mac6.size() - 6);
+  return resolve_ble_name(base_name_, name_configured_, App.get_name(), mac6, name_suffix_);
 }
 
 }  // namespace ancs
