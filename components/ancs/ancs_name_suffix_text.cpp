@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Brian Towles
 
 #include "ancs_name_suffix_text.h"
+#ifdef USE_TEXT
 #include "ancs_name_resolver.h"
 #include "esphome/core/log.h"
 #include <cstring>
@@ -49,3 +50,5 @@ void AncsNameSuffixText::dump_config() {
 
 }  // namespace ancs
 }  // namespace esphome
+
+#endif  // USE_TEXT

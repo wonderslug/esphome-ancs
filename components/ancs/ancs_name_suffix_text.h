@@ -2,6 +2,8 @@
 // Copyright (c) 2026 Brian Towles
 
 #pragma once
+#include "esphome/core/defines.h"
+#ifdef USE_TEXT
 #include "esphome/components/text/text.h"
 #include "esphome/core/component.h"
 #include "esphome/core/preferences.h"
@@ -35,3 +37,5 @@ class AncsNameSuffixText : public text::Text, public Component {
 
 }  // namespace ancs
 }  // namespace esphome
+
+#endif  // USE_TEXT
