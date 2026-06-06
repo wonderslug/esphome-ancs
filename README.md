@@ -145,9 +145,9 @@ device is in range with no further use of nRF Connect required.
 1. Install **nRF Connect for Mobile** from the App Store.
 2. Flash the ESP32 and power it on. Watch the serial log for `NimBLE synced` and `advertising started`.
 3. Open nRF Connect → **SCANNER** tab → tap **SCAN**.
-4. Find your device by the BLE name you set (e.g. `ESPHome-ANCS`) and tap **CONNECT**.
-5. The ESP32 receives the connection and immediately requests pairing. iOS shows a system dialog: **"ESPHome-ANCS" Would Like to Pair With Your iPhone** → tap **Pair**.
-6. iOS shows a second dialog: **Allow "ESPHome-ANCS" to Receive Your iPhone Notifications?** → tap **Allow**. This grants ANCS access.
+4. Find your device by the BLE name shown for your device (your node name, e.g. `ancservice-a1b2c3`) and tap **CONNECT**.
+5. The ESP32 receives the connection and immediately requests pairing. iOS shows a system dialog: **"ancservice-a1b2c3" Would Like to Pair With Your iPhone** → tap **Pair**.
+6. iOS shows a second dialog: **Allow "ancservice-a1b2c3" to Receive Your iPhone Notifications?** → tap **Allow**. This grants ANCS access.
 7. nRF Connect shows the GATT services being discovered. You will see the ANCS service appear (`7905F431-…`).
 8. Close nRF Connect. The bond is now stored at the iOS system level.
 9. The ESP32 logs show `ANCS chars done` and `iPhone connected`. ESPHome sensors reflect the connected state.
@@ -216,6 +216,9 @@ name is resolved at runtime:
   there is no MAC suffix, is appended (`ancservice` → `ancservice-Kitchen`). It is
   persisted across reboots and applied live — no reboot or re-pairing required
   (existing iOS bonds are kept; iOS keys bonds on the address, not the name).
+  Note: if all BLE connection slots are currently in use (the device isn't
+  advertising), the GAP name updates immediately but the broadcast/scanned name
+  refreshes on the next advertising cycle, i.e. once a peer disconnects.
 
 > **Upgrade note:** Previously, omitting `name:` advertised the static name
 > `ESPHome-ANCS`. It now defaults to the ESPHome node name. If you relied on the

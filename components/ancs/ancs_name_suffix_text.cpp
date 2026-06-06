@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Brian Towles
 
 #include "ancs_name_suffix_text.h"
+#include "ancs_name_resolver.h"
 #include "esphome/core/log.h"
 #include <cstring>
 
@@ -10,9 +11,10 @@ namespace ancs {
 
 static const char *const TAG = "ancs.text";
 
-// Stored-suffix cap. The final advertised name is capped at 29 chars, so a
-// suffix beyond this is never useful; keep the NVS record small and fixed-size.
-static const size_t SUFFIX_STORE_MAX = 31;
+// Stored-suffix cap. Matches the advertised-name cap (MAX_ADV_NAME_LEN) so a
+// suffix beyond this is never useful; keep the NVS record small and fixed-size,
+// and keep a single source of truth for the limit.
+static const size_t SUFFIX_STORE_MAX = MAX_ADV_NAME_LEN;
 
 void AncsNameSuffixText::setup() {
   std::string restored;
