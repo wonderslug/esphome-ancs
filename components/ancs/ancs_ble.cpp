@@ -994,6 +994,18 @@ void AncsBle::disconnect() {
   }
 }
 
+void AncsBle::set_advertised_name(const std::string &name) {
+  s_cfg.device_name = name;
+  int rc = ble_svc_gap_device_name_set(name.c_str());
+  if (rc != 0)
+    ESP_LOGW(TAG, "ble_svc_gap_device_name_set failed: %d", rc);
+  // Rebuild adv + scan-response data on the next loop() (the HCI set-data calls
+  // must run on the main task, not a NimBLE callback). Existing iOS bonds are
+  // unaffected — they key on the IRK/address, not the GAP device name.
+  s_adv_override_pending = true;
+  ESP_LOGI(TAG, "advertised name set to '%s'", name.c_str());
+}
+
 void AncsBle::clear_bonds_and_restart() {
   ESP_LOGI(TAG, "clearing all bonds and restarting");
   ble_store_clear();

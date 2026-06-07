@@ -77,6 +77,7 @@
 
 esphome:
   name: ancs-ha-bridge
+  name_add_mac_suffix: true
 
 esp32:
   board: esp32dev

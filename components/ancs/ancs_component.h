@@ -26,7 +26,9 @@ class AncsComponent : public Component {
   void dump_config() override;
   float get_setup_priority() const override { return setup_priority::AFTER_WIFI; }
 
-  void set_device_name(const std::string &n) { device_name_ = n; }
+  void set_base_name(const std::string &n) { base_name_ = n; }
+  void set_name_configured(bool configured) { name_configured_ = configured; }
+  void set_name_suffix(const std::string &suffix);
   void set_auto_fetch(bool b) { auto_fetch_ = b; }
   void set_manufacturer(const std::string &m) { manufacturer_ = m; }
   void set_model(const std::string &m) { model_ = m; }
@@ -42,6 +44,7 @@ class AncsComponent : public Component {
   void set_last_message_text_sensor(text_sensor::TextSensor *s) { last_message_ts_ = s; }
   void set_last_app_id_text_sensor(text_sensor::TextSensor *s) { last_app_id_ts_ = s; }
   void set_last_caller_text_sensor(text_sensor::TextSensor *s) { last_caller_ts_ = s; }
+  void set_advertised_name_text_sensor(text_sensor::TextSensor *s) { advertised_name_ts_ = s; }
 #endif
 
   void add_on_connect_callback(std::function<void(const std::string &)> cb) { on_connect_.add(std::move(cb)); }
@@ -72,7 +75,17 @@ class AncsComponent : public Component {
 
  protected:
   AncsBle ble_;
-  std::string device_name_{"ESPHome-ANCS"};
+  std::string base_name_;
+  bool name_configured_{false};
+  std::string name_suffix_;
+  bool ble_initialized_{false};
+
+  // Resolve the effective advertised name from base/node name + suffix.
+  std::string resolve_name() const;
+#ifdef USE_TEXT_SENSOR
+  // Push the resolved advertised name to its diagnostic text sensor, if configured.
+  void publish_advertised_name_();
+#endif
   std::string manufacturer_{"ESPHome"};
   std::string model_{"ANCS Node"};
   bool auto_fetch_{true};
@@ -91,6 +104,7 @@ class AncsComponent : public Component {
   text_sensor::TextSensor *last_message_ts_{nullptr};
   text_sensor::TextSensor *last_app_id_ts_{nullptr};
   text_sensor::TextSensor *last_caller_ts_{nullptr};
+  text_sensor::TextSensor *advertised_name_ts_{nullptr};
 #endif
 
   CallbackManager<void(const std::string &)> on_connect_;

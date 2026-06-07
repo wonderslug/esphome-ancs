@@ -53,7 +53,10 @@ FETCH_ATTRIBUTE_OPTIONS = ["app_id", "title", "subtitle", "message", "date"]
 CONFIG_SCHEMA = cv.Schema(
     {
         cv.GenerateID(): cv.declare_id(AncsComponent),
-        cv.Optional(CONF_NAME, default="ESPHome-ANCS"): cv.All(cv.string, cv.Length(max=29)),
+        # Base advertised name. When omitted, defaults at runtime to the ESPHome
+        # node name (App.get_name()), which already carries the per-device MAC
+        # suffix if `esphome: name_add_mac_suffix: true` is set.
+        cv.Optional(CONF_NAME): cv.All(cv.string, cv.Length(max=29)),
         cv.Optional(CONF_AUTO_FETCH_ATTRIBUTES, default=True): cv.boolean,
         cv.Optional(CONF_FETCH_ATTRIBUTES, default=["app_id", "title", "message"]): cv.ensure_list(
             cv.one_of(*FETCH_ATTRIBUTE_OPTIONS, lower=True)
@@ -115,7 +118,9 @@ FINAL_VALIDATE_SCHEMA = _validate_no_bluedroid_ble
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
-    cg.add(var.set_device_name(config[CONF_NAME]))
+    if CONF_NAME in config:
+        cg.add(var.set_base_name(config[CONF_NAME]))
+        cg.add(var.set_name_configured(True))
     cg.add(var.set_auto_fetch(config[CONF_AUTO_FETCH_ATTRIBUTES]))
     cg.add(var.set_manufacturer(config[CONF_MANUFACTURER]))
     cg.add(var.set_model(config[CONF_MODEL]))

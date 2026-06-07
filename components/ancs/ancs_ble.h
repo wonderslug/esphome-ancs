@@ -52,6 +52,8 @@ class AncsBle {
   // Actions (safe to call from the ESPHome loop task).
   void clear_bonds_and_restart();
   void disconnect();
+  // Update the advertised / GAP device name at runtime and trigger a re-advertise.
+  void set_advertised_name(const std::string &name);
   void request_attributes(uint32_t uid, const std::string &device_name = "");
 };
 
