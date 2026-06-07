@@ -44,6 +44,7 @@ class AncsComponent : public Component {
   void set_last_message_text_sensor(text_sensor::TextSensor *s) { last_message_ts_ = s; }
   void set_last_app_id_text_sensor(text_sensor::TextSensor *s) { last_app_id_ts_ = s; }
   void set_last_caller_text_sensor(text_sensor::TextSensor *s) { last_caller_ts_ = s; }
+  void set_advertised_name_text_sensor(text_sensor::TextSensor *s) { advertised_name_ts_ = s; }
 #endif
 
   void add_on_connect_callback(std::function<void(const std::string &)> cb) { on_connect_.add(std::move(cb)); }
@@ -81,6 +82,10 @@ class AncsComponent : public Component {
 
   // Resolve the effective advertised name from base/node name + suffix.
   std::string resolve_name() const;
+#ifdef USE_TEXT_SENSOR
+  // Push the resolved advertised name to its diagnostic text sensor, if configured.
+  void publish_advertised_name_();
+#endif
   std::string manufacturer_{"ESPHome"};
   std::string model_{"ANCS Node"};
   bool auto_fetch_{true};
@@ -99,6 +104,7 @@ class AncsComponent : public Component {
   text_sensor::TextSensor *last_message_ts_{nullptr};
   text_sensor::TextSensor *last_app_id_ts_{nullptr};
   text_sensor::TextSensor *last_caller_ts_{nullptr};
+  text_sensor::TextSensor *advertised_name_ts_{nullptr};
 #endif
 
   CallbackManager<void(const std::string &)> on_connect_;

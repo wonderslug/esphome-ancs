@@ -79,6 +79,8 @@ text_sensor:
       name: "Last Message"
     last_caller:
       name: "Last Caller"
+    advertised_name:
+      name: "Advertised Name"
 
 interval:
   - interval: 3600s

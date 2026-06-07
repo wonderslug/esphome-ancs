@@ -27,6 +27,9 @@ void AncsComponent::setup() {
   if (call_active_bs_)
     call_active_bs_->publish_initial_state(false);
 #endif
+#ifdef USE_TEXT_SENSOR
+  publish_advertised_name_();
+#endif
 }
 
 void AncsComponent::loop() {
@@ -131,9 +134,20 @@ void AncsComponent::dump_config() {
 
 void AncsComponent::set_name_suffix(const std::string &suffix) {
   name_suffix_ = suffix;
-  if (ble_initialized_)
+  if (ble_initialized_) {
     ble_.set_advertised_name(resolve_name());
+#ifdef USE_TEXT_SENSOR
+    publish_advertised_name_();
+#endif
+  }
 }
+
+#ifdef USE_TEXT_SENSOR
+void AncsComponent::publish_advertised_name_() {
+  if (advertised_name_ts_)
+    advertised_name_ts_->publish_state(resolve_name());
+}
+#endif
 
 std::string AncsComponent::resolve_name() const {
   // get_mac_address() returns 12 lowercase hex chars (no separators).

@@ -296,6 +296,8 @@ text_sensor:
       name: "Last App ID"
     last_caller:
       name: "Last Caller"
+    advertised_name:
+      name: "Advertised Name"
 ```
 
 | Sensor key | Description |
@@ -304,6 +306,7 @@ text_sensor:
 | `last_message` | Message body of the most recently received notification. |
 | `last_app_id` | Bundle ID of the source app (e.g., `com.apple.mobilephone`). |
 | `last_caller` | Caller name from the most recent incoming-call notification. |
+| `advertised_name` | The current resolved BLE advertised name (diagnostic, read-only) — see [BLE advertised name](#ble-advertised-name). Updates live when the name suffix changes. |
 
 ### `text` platform `ancs`
 
