@@ -107,8 +107,8 @@ void AncsComponent::loop() {
         if (ev.date.empty()) {
           ESP_LOGI(TAG, "Attributes uid=%" PRIu32 " app=%s title=%s", ev.uid, ev.app_id.c_str(), ev.title.c_str());
         } else {
-          ESP_LOGI(TAG, "Attributes uid=%" PRIu32 " app=%s title=%s date=%s", ev.uid, ev.app_id.c_str(), ev.title.c_str(),
-                   ev.date.c_str());
+          ESP_LOGI(TAG, "Attributes uid=%" PRIu32 " app=%s title=%s date=%s", ev.uid, ev.app_id.c_str(),
+                   ev.title.c_str(), ev.date.c_str());
         }
 #ifdef USE_TEXT_SENSOR
         if (last_title_ts_)

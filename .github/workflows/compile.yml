@@ -16,7 +16,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.11'
+          python-version: '3.13'
 
       # The ESP-IDF toolchain (~500 MB) lives in ~/.platformio.
       # Keyed to the ESPHome version so a version bump refreshes the cache.
