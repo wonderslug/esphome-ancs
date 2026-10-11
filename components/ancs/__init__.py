@@ -6,6 +6,11 @@ import esphome.config_validation as cv
 import esphome.final_validate as fv
 from esphome import automation
 from esphome.components.esp32 import add_idf_sdkconfig_option
+
+try:
+    from esphome.components.esp32 import include_builtin_idf_component
+except ImportError:  # ESPHome < 2026.9 has no IDF component exclusion list
+    include_builtin_idf_component = None
 from esphome.const import CONF_ID, CONF_NAME, CONF_TRIGGER_ID
 
 CODEOWNERS = ["@wonderslug"]
@@ -179,6 +184,9 @@ async def to_code(config):
 
     # Enable native NimBLE host via sdkconfig (ESP-IDF only).
     cg.add_platformio_option("framework", "espidf")
+    # ESPHome 2026.9+ excludes the IDF `bt` component by default; NimBLE lives there.
+    if include_builtin_idf_component is not None:
+        include_builtin_idf_component("bt")
     for opt, val in [
         ("CONFIG_BT_ENABLED", True),
         ("CONFIG_BT_NIMBLE_ENABLED", True),
