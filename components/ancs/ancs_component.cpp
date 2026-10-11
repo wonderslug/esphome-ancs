@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Brian Towles
 
+#include <cinttypes>
 #include "ancs_component.h"
 #include "ancs_name_resolver.h"
 #include "esphome/core/application.h"
@@ -104,9 +105,9 @@ void AncsComponent::loop() {
 
       case BleEventType::ATTRIBUTES:
         if (ev.date.empty()) {
-          ESP_LOGI(TAG, "Attributes uid=%u app=%s title=%s", ev.uid, ev.app_id.c_str(), ev.title.c_str());
+          ESP_LOGI(TAG, "Attributes uid=%" PRIu32 " app=%s title=%s", ev.uid, ev.app_id.c_str(), ev.title.c_str());
         } else {
-          ESP_LOGI(TAG, "Attributes uid=%u app=%s title=%s date=%s", ev.uid, ev.app_id.c_str(), ev.title.c_str(),
+          ESP_LOGI(TAG, "Attributes uid=%" PRIu32 " app=%s title=%s date=%s", ev.uid, ev.app_id.c_str(), ev.title.c_str(),
                    ev.date.c_str());
         }
 #ifdef USE_TEXT_SENSOR
